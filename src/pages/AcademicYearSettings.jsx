@@ -7,20 +7,8 @@ import api from '../api/client';
 const AcademicYearSettings = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  
   // Check if user has permission (Admin or Principal only)
   const hasPermission = user?.role === ROLES.ADMIN || user?.role === ROLES.PRINCIPAL;
-  
-  if (!hasPermission) {
-    return (
-      <Container>
-        <Alert variant="danger">
-          <Alert.Heading>Access Denied</Alert.Heading>
-          <p>You do not have permission to access this page. Only Administrators and Principals can configure academic year settings.</p>
-        </Alert>
-      </Container>
-    );
-  }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -31,8 +19,9 @@ const AcademicYearSettings = () => {
   const [currentYear, setCurrentYear] = useState('');
 
   useEffect(() => {
+    if (!hasPermission) return;
     loadConfig();
-  }, []);
+  }, [hasPermission]);
 
   const loadConfig = async () => {
     setLoading(true);
@@ -90,6 +79,17 @@ const AcademicYearSettings = () => {
     const year = new Date().getFullYear();
     return new Date(year, month + 1, 0).getDate();
   };
+
+  if (!hasPermission) {
+    return (
+      <Container>
+        <Alert variant="danger">
+          <Alert.Heading>Access Denied</Alert.Heading>
+          <p>You do not have permission to access this page. Only Administrators and Principals can configure academic year settings.</p>
+        </Alert>
+      </Container>
+    );
+  }
 
   if (loading) {
     return (

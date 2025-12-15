@@ -16,6 +16,7 @@ const DailyAttendance = lazy(() => import('./pages/attendance/DailyAttendance'))
 const ClassManagement = lazy(() => import('./pages/ClassManagement'));
 const ClassAttendance = lazy(() => import('./pages/ClassAttendance'));
 const ReportsDashboard = lazy(() => import('./pages/reports/Dashboard'));
+const DailyAttendanceReport = lazy(() => import('./pages/reports/DailyAttendanceReport'));
 const ExamReport = lazy(() => import('./pages/reports/ExamReport'));
 const ExamResultsList = lazy(() => import('./pages/reports/ExamResultsList'));
 const StudentReport = lazy(() => import('./pages/reports/StudentReport'));
@@ -57,6 +58,7 @@ function App() {
                 <Route path="classes" element={<ClassManagement />} />
                 <Route path="class-attendance" element={<ClassAttendance />} />
                 <Route path="reports" element={<ReportsDashboard />} />
+                <Route path="reports/daily-attendance" element={<DailyAttendanceReport />} />
                 <Route path="reports/exam/:id" element={<ExamReport />} />
                 <Route path="exam-results" element={<ExamResultsList />} />
                 <Route path="reports/student/:studentId" element={<StudentReport />} />

@@ -240,14 +240,36 @@ const Dashboard = () => {
       </Row>
 
       <Row className="mb-3">
+        <Col md={12}>
+          <Card style={CARD_STYLE} className="h-100">
+            <Card.Header className="d-flex justify-content-between align-items-center bg-white border-0">
+              <div className="fw-bold">📊 Daily Attendance Report</div>
+              <Button variant="outline-primary" size="sm" href="/reports/daily-attendance">
+                View Report
+              </Button>
+            </Card.Header>
+            <Card.Body>
+              <div className="text-muted small">
+                View and download daily attendance reports for any selected date. Includes all students with session-wise attendance details.
+              </div>
+              <div className="mt-2">
+                <Badge bg="success" className="me-2">Available</Badge>
+                <Badge bg="light" text="dark">PDF & Excel Export</Badge>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+
+      <Row className="mb-3">
         <Col md={4}>
-          <SectionCard title="Daily Attendance" actionHref="/attendance" actionLabel="Open Attendance">
+          <SectionCard title="Daily Attendance Management" actionHref="/attendance" actionLabel="Open Attendance">
             <div className="text-muted small">
-              Daily staff/student attendance visualization. Hook to daily attendance endpoint when ready.
+              Mark and manage daily attendance for all students across 14 sessions.
             </div>
             <div className="mt-2">
-              <Badge bg="secondary" className="me-2">Planned</Badge>
-              <Badge bg="light" text="dark">Filters: date range</Badge>
+              <Badge bg="info" className="me-2">Active</Badge>
+              <Badge bg="light" text="dark">14 Sessions</Badge>
             </div>
           </SectionCard>
         </Col>
