@@ -1,0 +1,67 @@
+export const ROLES = {
+  ADMIN: 'Admin',
+  COORDINATOR: 'Coordinator',
+  PRINCIPAL: 'Principal',
+  HOD: 'HOD',
+  TEACHER: 'Teacher',
+  PARENT: 'Parent',
+  CARETAKER: 'Caretaker',
+  STUDENT: 'Student'
+};
+
+export const ACCESS_LEVELS = {
+  [ROLES.ADMIN]: 10,
+  [ROLES.COORDINATOR]: 10, // Same level as Admin
+  [ROLES.PRINCIPAL]: 9,
+  [ROLES.HOD]: 7,
+  [ROLES.TEACHER]: 5,
+  [ROLES.CARETAKER]: 4,
+  [ROLES.PARENT]: 2,
+  [ROLES.STUDENT]: 1
+};
+
+export const TASK_ASSIGNERS = new Set([ROLES.PRINCIPAL, ROLES.HOD]);
+export const TASK_ASSIGNEES = new Set([ROLES.TEACHER]);
+
+export const STUDENT_DATA_VIEWERS = new Set([
+  ROLES.ADMIN, 
+  ROLES.PRINCIPAL, 
+  ROLES.HOD, 
+  ROLES.TEACHER
+]);
+
+export const ATTENDANCE_MANAGERS = new Set([
+  ROLES.ADMIN,
+  ROLES.PRINCIPAL,
+  ROLES.HOD,
+  ROLES.CARETAKER
+]);
+
+export const ATTENDANCE_VIEWERS = new Set([
+  ROLES.ADMIN,
+  ROLES.PRINCIPAL,
+  ROLES.HOD,
+  ROLES.TEACHER,
+  ROLES.CARETAKER,
+  ROLES.PARENT
+]);
+
+export const BULK_ATTENDANCE_MANAGERS = new Set([
+  ROLES.ADMIN,
+  ROLES.PRINCIPAL,
+  ROLES.CARETAKER
+]);
+
+export const HOSTEL_MANAGERS = new Set([
+  ROLES.ADMIN,
+  ROLES.PRINCIPAL,
+  ROLES.CARETAKER
+]);
+
+export const DISCIPLINARY_REPORTERS = new Set([
+  ROLES.ADMIN,
+  ROLES.PRINCIPAL,
+  ROLES.HOD,
+  ROLES.TEACHER,
+  ROLES.CARETAKER
+]);
