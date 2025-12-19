@@ -1,112 +1,82 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Button, Alert, Spinner, Badge } from 'react-bootstrap';
 import { useAuth } from '../store/auth';
 import { ROLES } from '../utils/roles';
 import AcademicYearFilter from '../components/AcademicYearFilter';
 import api from '../api/client';
+import { Link } from 'react-router-dom';
 
-const PAGE_STYLE = {
-  minHeight: 'calc(100vh - 120px)',
-  background: 'linear-gradient(180deg, #f6f8fc 0%, #ffffff 60%)',
-  borderRadius: '12px',
-  padding: '16px'
-};
+const StatCard = ({ title, value, subtitle, icon, color, badges }) => {
+  const colorClasses = {
+    violet: 'from-violet-500 to-purple-600 shadow-violet-200',
+    emerald: 'from-emerald-500 to-teal-600 shadow-emerald-200',
+    sky: 'from-sky-500 to-blue-600 shadow-sky-200',
+    amber: 'from-amber-500 to-orange-600 shadow-amber-200',
+  };
 
-const CARD_STYLE = {
-  height: '100%',
-  border: '1px solid #eef1f7',
-  borderRadius: '12px',
-  background: '#ffffff',
-  boxShadow: '0 6px 16px rgba(15, 23, 42, 0.08)',
-  transition: 'transform 140ms ease, box-shadow 140ms ease'
-};
-
-const MenuGrid = ({ title, subtitle, items }) => (
-  <div>
-    <div className="d-flex justify-content-between align-items-center mb-3">
-      <div>
-        <h4 className="mb-0">{title}</h4>
-        {subtitle && <small className="text-muted">{subtitle}</small>}
+  return (
+    <div className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-medium text-slate-500">{title}</p>
+          <h3 className="text-3xl font-bold text-slate-800 mt-1">{value}</h3>
+          {subtitle && <p className="text-sm text-slate-500 mt-1">{subtitle}</p>}
+          {badges && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {badges.map((badge, i) => (
+                <span key={i} className={`text-xs font-semibold px-2.5 py-1 rounded-full ${badge.color}`}>
+                  {badge.label}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${colorClasses[color]} flex items-center justify-center text-2xl shadow-lg`}>
+          {icon}
+        </div>
       </div>
     </div>
-    <Row xs={1} sm={2} md={3} lg={4} className="g-3">
-      {items.map((item) => (
-        <Col key={item.label}>
-          <Card
-            style={CARD_STYLE}
-            className="h-100"
-            onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 10px 24px rgba(15, 23, 42, 0.14)')}
-            onMouseLeave={(e) => (e.currentTarget.style.boxShadow = '0 6px 16px rgba(15, 23, 42, 0.08)')}
-          >
-            <Card.Body className="d-flex flex-column">
-              <div className="fw-bold mb-1" style={{ fontSize: '1.05rem' }}>{item.label}</div>
-              <div className="text-muted small mb-3">{item.description}</div>
-              <Button
-                variant={item.variant || 'primary'}
-                href={item.href}
-                className="mt-auto w-100"
-                size="sm"
-                style={{ borderRadius: '10px', boxShadow: '0 4px 10px rgba(59, 130, 246, 0.25)' }}
-              >
-                {item.cta || 'Open'}
-              </Button>
-            </Card.Body>
-          </Card>
-        </Col>
-      ))}
-    </Row>
-  </div>
+  );
+};
+
+const QuickAccessCard = ({ item }) => (
+  <Link
+    to={item.href}
+    className="group block bg-white rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all border-2 border-transparent hover:border-violet-200"
+  >
+    <div className="text-3xl mb-3">{item.icon}</div>
+    <h4 className="font-semibold text-slate-800 group-hover:text-violet-600 transition-colors">
+      {item.label}
+    </h4>
+    <p className="text-sm text-slate-500 mt-1">{item.description}</p>
+  </Link>
 );
 
 const getMenuForRole = (role) => {
-  // Cleaner, more consistent icon set
   const adminMenu = [
-    { label: 'Departments', href: '/departments', description: 'Manage departments & batches' },
-    { label: 'Students', href: '/students', description: 'Enroll & manage students' },
-    { label: 'Teachers', href: '/teachers', description: 'Manage teachers & roles' },
-    { label: 'Exams', href: '/exams', description: 'Create & schedule exams' },
-    { label: 'Requests', href: '/requests', description: 'Leave & visit approvals' },
-    { label: 'Classes', href: '/classes', description: 'Class management & attendance' },
-    { label: 'Reports', href: '/reports', description: 'Academic & attendance reports' },
-    { label: 'Exam Results', href: '/exam-results', description: 'View results & marksheets' },
-    { label: 'Password Reset', href: '/password-reset', description: 'Admin password reset' },
-    { label: 'Academic Year Settings', href: '/academic-year-settings', description: 'Configure academic year start date' }
+    { label: 'Departments', href: '/departments', description: 'Manage departments', icon: '🏛️' },
+    { label: 'Students', href: '/students', description: 'Student management', icon: '👨‍🎓' },
+    { label: 'Teachers', href: '/teachers', description: 'Teacher management', icon: '👨‍🏫' },
+    { label: 'Exams', href: '/exams', description: 'Exam management', icon: '📝' },
+    { label: 'Requests', href: '/requests', description: 'Leave & visit', icon: '📋' },
+    { label: 'Classes', href: '/classes', description: 'Class management', icon: '🏫' },
+    { label: 'Reports', href: '/reports', description: 'View reports', icon: '📈' },
+    { label: 'Results', href: '/exam-results', description: 'Exam results', icon: '🏆' },
   ];
 
   const teacherMenu = [
-    { label: 'My Classes', href: '/classes', description: 'View & manage your classes' },
-    { label: 'Mark Attendance', href: '/classes', description: 'Mark attendance from classes' },
-    { label: 'Exams', href: '/exams', description: 'Manage exams & marks' },
-    { label: 'Exam Results', href: '/exam-results', description: 'View student results' },
-    { label: 'Requests', href: '/requests', description: 'Approve leave/visit requests' },
-    { label: 'Reports', href: '/reports', description: 'Class & exam reports' }
-  ];
-
-  const hodMenu = [
-    { label: 'Departments', href: '/departments', description: 'Manage sub-departments & batches' },
-    { label: 'Teachers', href: '/teachers', description: 'Assign & verify teachers' },
-    { label: 'Exams', href: '/exams', description: 'Create & schedule exams' },
-    { label: 'Classes', href: '/classes', description: 'Class schedules & attendance' },
-    { label: 'Reports', href: '/reports', description: 'Department performance' }
-  ];
-
-  const parentMenu = [
-    { label: 'Student Profile', href: '/students', description: 'View your child profile' },
-    { label: 'Attendance', href: '/attendance', description: 'Track attendance' },
-    { label: 'Exam Results', href: '/exam-results', description: 'Results & marksheets' },
-    { label: 'Requests', href: '/requests', description: 'Leave & visit requests' }
+    { label: 'Classes', href: '/classes', description: 'Your classes', icon: '🏫' },
+    { label: 'Exams', href: '/exams', description: 'Manage exams', icon: '📝' },
+    { label: 'Results', href: '/exam-results', description: 'View results', icon: '🏆' },
+    { label: 'Reports', href: '/reports', description: 'Reports', icon: '📈' },
   ];
 
   switch (role) {
     case ROLES.ADMIN:
     case ROLES.PRINCIPAL:
+    case ROLES.COORDINATOR:
       return adminMenu;
-    case ROLES.HOD:
-      return hodMenu;
     case ROLES.TEACHER:
       return teacherMenu;
-    case ROLES.PARENT:
-      return parentMenu;
     default:
       return adminMenu;
   }
@@ -148,9 +118,9 @@ const Dashboard = () => {
 
   if (!user) {
     return (
-      <Alert variant="warning">
+      <div className="bg-amber-100 text-amber-800 p-4 rounded-xl font-medium">
         Please log in to view your dashboard.
-      </Alert>
+      </div>
     );
   }
 
@@ -158,232 +128,186 @@ const Dashboard = () => {
   const stats = dashboardData?.statistics;
 
   return (
-    <div className="py-3" style={PAGE_STYLE}>
-      <div className="mb-4">
-        <Row className="align-items-center">
-          <Col>
-            <h2 className="mb-1">Welcome{user.fullName ? `, ${user.fullName}` : ''}</h2>
-            <div className="text-muted">
-              Overview of your academic year performance
-            </div>
-          </Col>
-          <Col xs="auto">
-            <AcademicYearFilter
-              value={academicYear}
-              onChange={setAcademicYear}
-              size="sm"
-              label="Academic Year"
-            />
-          </Col>
-        </Row>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">
+            Welcome back, {user.fullName || 'User'} 👋
+          </h1>
+          <p className="text-slate-500 mt-1">Here's what's happening in your school today</p>
+        </div>
+        <AcademicYearFilter
+          value={academicYear}
+          onChange={setAcademicYear}
+          size="sm"
+        />
       </div>
 
+      {/* Error */}
       {error && (
-        <Alert variant="danger" dismissible onClose={() => setError('')} className="mb-3">
+        <div className="bg-rose-100 border-l-4 border-rose-500 text-rose-800 p-4 rounded-xl font-medium">
           {error}
-        </Alert>
+        </div>
       )}
 
+      {/* Loading */}
       {loading && (
-        <div className="text-center my-4">
-          <Spinner animation="border" />
+        <div className="flex justify-center py-16">
+          <div className="w-10 h-10 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin"></div>
         </div>
       )}
 
       {dashboardData && !loading && (
         <>
-          {/* Statistics Cards */}
-          <Row className="mb-4 g-3">
-            <Col md={3} sm={6}>
-              <Card style={CARD_STYLE} className="h-100">
-                <Card.Body>
-                  <div className="text-muted small mb-1">Total Exams</div>
-                  <h3 className="mb-0">{stats?.exams?.total || 0}</h3>
-                  <div className="mt-2">
-                    <Badge bg="success" className="me-1">{stats?.exams?.completed || 0} Completed</Badge>
-                    <Badge bg="warning">{stats?.exams?.ongoing || 0} Ongoing</Badge>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col md={3} sm={6}>
-              <Card style={CARD_STYLE} className="h-100">
-                <Card.Body>
-                  <div className="text-muted small mb-1">Total Students</div>
-                  <h3 className="mb-0">{stats?.students?.total || 0}</h3>
-                  <div className="text-muted small mt-2">
-                    Across all departments
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col md={3} sm={6}>
-              <Card style={CARD_STYLE} className="h-100">
-                <Card.Body>
-                  <div className="text-muted small mb-1">Active Classes</div>
-                  <h3 className="mb-0">{stats?.classes?.active || 0}</h3>
-                  <div className="text-muted small mt-2">
-                    of {stats?.classes?.total || 0} total classes
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col md={3} sm={6}>
-              <Card style={CARD_STYLE} className="h-100">
-                <Card.Body>
-                  <div className="text-muted small mb-1">Attendance Rate</div>
-                  <h3 className="mb-0">{stats?.attendance?.rate || 0}%</h3>
-                  <div className="text-muted small mt-2">
-                    {stats?.attendance?.present || 0} present / {stats?.attendance?.totalSessions || 0} sessions
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
+          {/* Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard
+              title="Total Exams"
+              value={stats?.exams?.total || 0}
+              icon="📝"
+              color="violet"
+              badges={[
+                { label: `${stats?.exams?.completed || 0} Done`, color: 'bg-emerald-100 text-emerald-700' },
+                { label: `${stats?.exams?.ongoing || 0} Active`, color: 'bg-amber-100 text-amber-700' },
+              ]}
+            />
+            <StatCard
+              title="Total Students"
+              value={stats?.students?.total || 0}
+              subtitle="Across all departments"
+              icon="👨‍🎓"
+              color="emerald"
+            />
+            <StatCard
+              title="Active Classes"
+              value={stats?.classes?.active || 0}
+              subtitle={`of ${stats?.classes?.total || 0} total`}
+              icon="🏫"
+              color="sky"
+            />
+            <StatCard
+              title="Attendance Rate"
+              value={`${stats?.attendance?.rate || 0}%`}
+              subtitle={`${stats?.attendance?.present || 0} / ${stats?.attendance?.totalSessions || 0}`}
+              icon="📊"
+              color="amber"
+            />
+          </div>
 
-          {/* Requests & Teachers */}
-          <Row className="mb-4 g-3">
-            <Col md={6}>
-              <Card style={CARD_STYLE} className="h-100">
-                <Card.Header className="bg-white border-0">
-                  <div className="fw-bold">Requests Summary</div>
-                </Card.Header>
-                <Card.Body>
-                  <Row>
-                    <Col>
-                      <div className="text-muted small">Leave Requests</div>
-                      <div className="d-flex gap-2 mt-1">
-                        <Badge bg="warning">{stats?.requests?.leave?.pending || 0} Pending</Badge>
-                        <Badge bg="success">{stats?.requests?.leave?.approved || 0} Approved</Badge>
-                        <Badge bg="danger">{stats?.requests?.leave?.rejected || 0} Rejected</Badge>
-                      </div>
-                    </Col>
-                  </Row>
-                  <Row className="mt-3">
-                    <Col>
-                      <div className="text-muted small">Visit Requests</div>
-                      <div className="d-flex gap-2 mt-1">
-                        <Badge bg="warning">{stats?.requests?.visit?.pending || 0} Pending</Badge>
-                        <Badge bg="success">{stats?.requests?.visit?.approved || 0} Approved</Badge>
-                        <Badge bg="danger">{stats?.requests?.visit?.rejected || 0} Rejected</Badge>
-                      </div>
-                    </Col>
-                  </Row>
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col md={3}>
-              <Card style={CARD_STYLE} className="h-100">
-                <Card.Body>
-                  <div className="text-muted small mb-1">Total Teachers</div>
-                  <h3 className="mb-0">{stats?.teachers?.total || 0}</h3>
-                  <div className="text-muted small mt-2">
-                    Verified & Active
+          {/* Requests Summary */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm">
+              <h3 className="font-semibold text-slate-800 mb-4">📋 Requests Summary</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <p className="text-sm text-slate-500 mb-3 font-medium">Leave Requests</p>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="text-sm font-semibold px-3 py-1.5 rounded-full bg-amber-100 text-amber-700">
+                      {stats?.requests?.leave?.pending || 0} Pending
+                    </span>
+                    <span className="text-sm font-semibold px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700">
+                      {stats?.requests?.leave?.approved || 0} Approved
+                    </span>
+                    <span className="text-sm font-semibold px-3 py-1.5 rounded-full bg-rose-100 text-rose-700">
+                      {stats?.requests?.leave?.rejected || 0} Rejected
+                    </span>
                   </div>
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col md={3}>
-              <Card style={CARD_STYLE} className="h-100">
-                <Card.Body>
-                  <div className="text-muted small mb-1">Academic Year</div>
-                  <h5 className="mb-0">{dashboardData?.academicYear || 'N/A'}</h5>
-                  <div className="text-muted small mt-2">
-                    Current selection
+                </div>
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <p className="text-sm text-slate-500 mb-3 font-medium">Visit Requests</p>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="text-sm font-semibold px-3 py-1.5 rounded-full bg-amber-100 text-amber-700">
+                      {stats?.requests?.visit?.pending || 0} Pending
+                    </span>
+                    <span className="text-sm font-semibold px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700">
+                      {stats?.requests?.visit?.approved || 0} Approved
+                    </span>
                   </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg shadow-violet-200">
+              <p className="text-violet-200 text-sm font-medium">Academic Year</p>
+              <h3 className="text-2xl font-bold mt-1">{dashboardData?.academicYear || 'N/A'}</h3>
+              <p className="text-violet-200 text-sm mt-2">Current selection</p>
+              <div className="mt-4 pt-4 border-t border-white/20">
+                <p className="text-violet-200 text-sm font-medium">Total Teachers</p>
+                <h4 className="text-xl font-bold">{stats?.teachers?.total || 0}</h4>
+              </div>
+            </div>
+          </div>
 
           {/* Recent Activity */}
           {dashboardData?.recentActivity && (
-            <Row className="mb-4 g-3">
-              <Col md={6}>
-                <Card style={CARD_STYLE} className="h-100">
-                  <Card.Header className="d-flex justify-content-between align-items-center bg-white border-0">
-                    <div className="fw-bold">Recent Exams</div>
-                    <Button variant="outline-primary" size="sm" href="/exams">View All</Button>
-                  </Card.Header>
-                  <Card.Body>
-                    {dashboardData.recentActivity.exams?.length > 0 ? (
-                      dashboardData.recentActivity.exams.map((exam, idx) => (
-                        <div key={idx} className="d-flex justify-content-between align-items-center border-bottom py-2">
-                          <div>
-                            <div><strong>{exam.name}</strong> <Badge bg="secondary">{exam.status}</Badge></div>
-                            <div className="text-muted small">{exam.subject}</div>
-                          </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <h3 className="font-semibold text-slate-800">📝 Recent Exams</h3>
+                  <Link to="/exams" className="text-sm text-violet-600 hover:text-violet-700 font-medium">
+                    View all →
+                  </Link>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {dashboardData.recentActivity.exams?.length > 0 ? (
+                    dashboardData.recentActivity.exams.slice(0, 4).map((exam, idx) => (
+                      <div key={idx} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50">
+                        <div>
+                          <p className="font-medium text-slate-800">{exam.name}</p>
+                          <p className="text-sm text-slate-500">{exam.subject}</p>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-muted small">No recent exams</div>
-                    )}
-                  </Card.Body>
-                </Card>
-              </Col>
-              <Col md={6}>
-                <Card style={CARD_STYLE} className="h-100">
-                  <Card.Header className="d-flex justify-content-between align-items-center bg-white border-0">
-                    <div className="fw-bold">Recent Results</div>
-                    <Button variant="outline-primary" size="sm" href="/exam-results">View All</Button>
-                  </Card.Header>
-                  <Card.Body>
-                    {dashboardData.recentActivity.results?.length > 0 ? (
-                      dashboardData.recentActivity.results.map((result, idx) => (
-                        <div key={idx} className="d-flex justify-content-between align-items-center border-bottom py-2">
-                          <div>
-                            <div><strong>{result.studentName}</strong></div>
-                            <div className="text-muted small">{result.examName} • {result.subject}</div>
-                          </div>
-                          <Badge bg="info">{Math.round(result.percentage || 0)}%</Badge>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-muted small">No recent results</div>
-                    )}
-                  </Card.Body>
-                </Card>
-              </Col>
-            </Row>
-          )}
-
-          {/* Subject Performance */}
-          {dashboardData?.subjectPerformance && dashboardData.subjectPerformance.length > 0 && (
-            <Card style={CARD_STYLE} className="mb-4">
-              <Card.Header className="d-flex justify-content-between align-items-center bg-white border-0">
-                <div className="fw-bold">Top Performing Subjects</div>
-                <Button variant="outline-primary" size="sm" href="/exam-results">View Details</Button>
-              </Card.Header>
-              <Card.Body>
-                <Row>
-                  {dashboardData.subjectPerformance.map((subject, idx) => (
-                    <Col md={4} key={idx} className="mb-3">
-                      <div className="border rounded p-3">
-                        <div className="fw-bold mb-2">{subject.subject}</div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div>
-                            <div className="text-muted small">Avg: {subject.averagePercentage}%</div>
-                            <div className="text-muted small">Pass: {subject.passPercentage}%</div>
-                          </div>
-                          <Badge bg="success">{subject.totalStudents} students</Badge>
-                        </div>
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                          exam.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {exam.status}
+                        </span>
                       </div>
-                    </Col>
-                  ))}
-                </Row>
-              </Card.Body>
-            </Card>
+                    ))
+                  ) : (
+                    <div className="px-6 py-12 text-center text-slate-400">No recent exams</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <h3 className="font-semibold text-slate-800">🏆 Recent Results</h3>
+                  <Link to="/exam-results" className="text-sm text-violet-600 hover:text-violet-700 font-medium">
+                    View all →
+                  </Link>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {dashboardData.recentActivity.results?.length > 0 ? (
+                    dashboardData.recentActivity.results.slice(0, 4).map((result, idx) => (
+                      <div key={idx} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50">
+                        <div>
+                          <p className="font-medium text-slate-800">{result.studentName}</p>
+                          <p className="text-sm text-slate-500">{result.examName}</p>
+                        </div>
+                        <span className="text-lg font-bold text-violet-600">
+                          {Math.round(result.percentage || 0)}%
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-6 py-12 text-center text-slate-400">No recent results</div>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
         </>
       )}
 
-      {/* Quick Access Menu */}
-      <div className="mt-4">
-        <MenuGrid
-          title="Quick Access"
-          subtitle="Jump straight to the most used sections"
-          items={menu}
-        />
+      {/* Quick Access */}
+      <div>
+        <h2 className="text-xl font-bold text-slate-800 mb-4">⚡ Quick Access</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {menu.map((item) => (
+            <QuickAccessCard key={item.href} item={item} />
+          ))}
+        </div>
       </div>
     </div>
   );

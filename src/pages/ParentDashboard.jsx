@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Container, Card, Row, Col, Tabs, Tab, Table, Badge, Spinner, Alert, Button, Modal, Form } from 'react-bootstrap';
 import { parentDashboardAPI } from '../api/parent-dashboard';
 import { getLeaveRequests, createLeaveRequest, getVisitRequests, createVisitRequest } from '../api/requests';
 import { useAuth } from '../store/auth';
-import AcademicYearFilter from '../components/AcademicYearFilter';
 
 const ParentDashboard = () => {
   const { user } = useAuth();
@@ -17,10 +15,10 @@ const ParentDashboard = () => {
   // Exam Marks
   const [examMarks, setExamMarks] = useState([]);
   const [examFilters, setExamFilters] = useState({ academicYear: '', term: '', examType: '' });
-  const [academicYearFilter, setAcademicYearFilter] = useState('');
   
   // Transactions
   const [transactions, setTransactions] = useState([]);
+  const [walletInfo, setWalletInfo] = useState(null);
   
   // Notes
   const [notes, setNotes] = useState([]);
@@ -53,7 +51,7 @@ const ParentDashboard = () => {
 
   useEffect(() => {
     loadData();
-  }, [activeTab, examFilters, academicYearFilter]);
+  }, [activeTab, examFilters]);
 
   const loadData = async () => {
     setLoading(true);
@@ -70,7 +68,10 @@ const ParentDashboard = () => {
           break;
         case 'transactions':
           const transRes = await parentDashboardAPI.getTransactions();
-          if (transRes.success) setTransactions(transRes.data);
+          if (transRes.success) {
+            setTransactions(transRes.data || []);
+            setWalletInfo(transRes.wallet || null);
+          }
           break;
         case 'notes':
           const notesRes = await parentDashboardAPI.getNotes();
@@ -80,13 +81,11 @@ const ParentDashboard = () => {
           const leaveRes = await getLeaveRequests();
           if (leaveRes.success) {
             const leaveData = leaveRes.data || leaveRes.leaveRequests || [];
-            console.log('Leave requests loaded:', leaveData);
             setLeaveRequests(leaveData);
           }
           const visitRes = await getVisitRequests();
           if (visitRes.success) {
             const visitData = visitRes.data || visitRes.visitRequests || [];
-            console.log('Visit requests loaded:', visitData);
             setVisitRequests(visitData);
           }
           break;
@@ -138,373 +137,574 @@ const ParentDashboard = () => {
   };
 
   const getStatusBadge = (status) => {
-    const variants = {
-      pending: 'warning',
-      approved: 'success',
-      rejected: 'danger',
-      cancelled: 'secondary'
+    const colors = {
+      pending: 'bg-amber-100 text-amber-700',
+      approved: 'bg-emerald-100 text-emerald-700',
+      rejected: 'bg-rose-100 text-rose-700',
+      cancelled: 'bg-slate-100 text-slate-700'
     };
-    return <Badge bg={variants[status] || 'secondary'}>{status}</Badge>;
+    return (
+      <span className={`px-3 py-1 rounded-full text-xs font-semibold uppercase ${colors[status] || colors.cancelled}`}>
+        {status}
+      </span>
+    );
   };
 
+  const tabs = [
+    { key: 'info', label: '📋 Basic Info' },
+    { key: 'marks', label: '📊 Exam Marks' },
+    { key: 'transactions', label: '💰 Wallet' },
+    { key: 'notes', label: '📝 Notes' },
+    { key: 'requests', label: '📋 Requests' }
+  ];
+
   return (
-    <Container className="py-4">
-      <h2 className="mb-4">Parent Dashboard</h2>
-      {error && <Alert variant="danger" dismissible onClose={() => setError('')}>{error}</Alert>}
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">Parent Dashboard</h1>
+        <p className="text-slate-500 mt-1">View your child's academic information and manage requests</p>
+      </div>
 
-      <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k)} className="mb-4">
-        <Tab eventKey="info" title="📋 Basic Info">
-          {loading ? <div className="text-center py-4"><Spinner /></div> : studentInfo && (
-            <Card>
-              <Card.Header><h5>Student Information</h5></Card.Header>
-              <Card.Body>
-                <Row>
-                  <Col md={6}>
-                    <p><strong>Name:</strong> {studentInfo.fullName}</p>
-                    <p><strong>Admission No:</strong> {studentInfo.admissionNo}</p>
-                    <p><strong>Date of Birth:</strong> {new Date(studentInfo.dateOfBirth).toLocaleDateString()}</p>
-                    <p><strong>Age:</strong> {studentInfo.age} years</p>
-                    <p><strong>Gender:</strong> {studentInfo.gender}</p>
-                    <p><strong>Blood Group:</strong> {studentInfo.bloodGroup || 'N/A'}</p>
-                  </Col>
-                  <Col md={6}>
-                    <p><strong>Department:</strong> {studentInfo.department?.name || 'N/A'}</p>
-                    <p><strong>Current Standard:</strong> {studentInfo.currentStandard || 'N/A'}</p>
-                    <p><strong>Date of Admission:</strong> {studentInfo.dateOfAdmission ? new Date(studentInfo.dateOfAdmission).toLocaleDateString() : 'N/A'}</p>
-                    <p><strong>Shaakha:</strong> {studentInfo.shaakha || 'N/A'}</p>
-                    <p><strong>Gothra:</strong> {studentInfo.gothra || 'N/A'}</p>
-                    <p><strong>Status:</strong> <Badge bg={studentInfo.status === 'active' ? 'success' : 'secondary'}>{studentInfo.status}</Badge></p>
-                  </Col>
-                </Row>
-                <hr />
-                <Row>
-                  <Col md={6}>
-                    <h6>Contact Information</h6>
-                    <p><strong>Phone:</strong> {studentInfo.phone || 'N/A'}</p>
-                    <p><strong>Email:</strong> {studentInfo.email || 'N/A'}</p>
-                    <p><strong>Address:</strong> {studentInfo.address || 'N/A'}</p>
-                  </Col>
-                  <Col md={6}>
-                    <h6>Family Information</h6>
-                    <p><strong>Father:</strong> {studentInfo.fatherName}</p>
-                    <p><strong>Mother:</strong> {studentInfo.motherName}</p>
-                    <p><strong>Guardian Phone:</strong> {studentInfo.guardianPhone}</p>
-                    <p><strong>Guardian Email:</strong> {studentInfo.guardianEmail || 'N/A'}</p>
-                  </Col>
-                </Row>
-              </Card.Body>
-            </Card>
-          )}
-        </Tab>
+      {error && (
+        <div className="bg-rose-100 border-l-4 border-rose-500 text-rose-800 p-4 rounded-xl font-medium flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="text-rose-600 hover:text-rose-800">×</button>
+        </div>
+      )}
 
-        <Tab eventKey="marks" title="📊 Exam Marks">
-          {loading ? <div className="text-center py-4"><Spinner /></div> : (
+      {/* Tabs */}
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="flex overflow-x-auto border-b border-slate-200">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-6 py-4 text-sm font-semibold whitespace-nowrap transition-all border-b-2 ${
+                activeTab === tab.key
+                  ? 'text-violet-600 border-violet-500 bg-violet-50'
+                  : 'text-slate-600 border-transparent hover:text-slate-800 hover:bg-slate-50'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-6">
+          {loading ? (
+            <div className="flex justify-center py-16">
+              <div className="w-10 h-10 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin"></div>
+            </div>
+          ) : (
             <>
-              <Card className="mb-3">
-                <Card.Body>
-                  <Row>
-                    <Col md={4}>
-                      <Form.Control
+              {/* Basic Info Tab */}
+              {activeTab === 'info' && studentInfo && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-slate-50 rounded-xl p-5">
+                      <h3 className="font-semibold text-slate-800 mb-4">Personal Information</h3>
+                      <div className="space-y-2 text-sm">
+                        <p><span className="font-medium text-slate-600">Name:</span> <span className="text-slate-800">{studentInfo.fullName}</span></p>
+                        <p><span className="font-medium text-slate-600">Admission No:</span> <span className="text-slate-800">{studentInfo.admissionNo}</span></p>
+                        <p><span className="font-medium text-slate-600">Date of Birth:</span> <span className="text-slate-800">{new Date(studentInfo.dateOfBirth).toLocaleDateString()}</span></p>
+                        <p><span className="font-medium text-slate-600">Age:</span> <span className="text-slate-800">{studentInfo.age} years</span></p>
+                        <p><span className="font-medium text-slate-600">Gender:</span> <span className="text-slate-800">{studentInfo.gender}</span></p>
+                        <p><span className="font-medium text-slate-600">Blood Group:</span> <span className="text-slate-800">{studentInfo.bloodGroup || 'N/A'}</span></p>
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-5">
+                      <h3 className="font-semibold text-slate-800 mb-4">Academic Information</h3>
+                      <div className="space-y-2 text-sm">
+                        <p><span className="font-medium text-slate-600">Department:</span> <span className="text-slate-800">{studentInfo.department?.name || 'N/A'}</span></p>
+                        <p><span className="font-medium text-slate-600">Current Standard:</span> <span className="text-slate-800">{studentInfo.currentStandard || 'N/A'}</span></p>
+                        <p><span className="font-medium text-slate-600">Date of Admission:</span> <span className="text-slate-800">{studentInfo.dateOfAdmission ? new Date(studentInfo.dateOfAdmission).toLocaleDateString() : 'N/A'}</span></p>
+                        <p><span className="font-medium text-slate-600">Shaakha:</span> <span className="text-slate-800">{studentInfo.shaakha || 'N/A'}</span></p>
+                        <p><span className="font-medium text-slate-600">Gothra:</span> <span className="text-slate-800">{studentInfo.gothra || 'N/A'}</span></p>
+                        <p><span className="font-medium text-slate-600">Status:</span> <span className={`px-2 py-1 rounded-full text-xs font-semibold ${studentInfo.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>{studentInfo.status}</span></p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-slate-50 rounded-xl p-5">
+                      <h3 className="font-semibold text-slate-800 mb-4">Contact Information</h3>
+                      <div className="space-y-2 text-sm">
+                        <p><span className="font-medium text-slate-600">Phone:</span> <span className="text-slate-800">{studentInfo.phone || 'N/A'}</span></p>
+                        <p><span className="font-medium text-slate-600">Email:</span> <span className="text-slate-800">{studentInfo.email || 'N/A'}</span></p>
+                        <p><span className="font-medium text-slate-600">Address:</span> <span className="text-slate-800">{studentInfo.address || 'N/A'}</span></p>
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-5">
+                      <h3 className="font-semibold text-slate-800 mb-4">Family Information</h3>
+                      <div className="space-y-2 text-sm">
+                        <p><span className="font-medium text-slate-600">Father:</span> <span className="text-slate-800">{studentInfo.fatherName}</span></p>
+                        <p><span className="font-medium text-slate-600">Mother:</span> <span className="text-slate-800">{studentInfo.motherName}</span></p>
+                        <p><span className="font-medium text-slate-600">Guardian Phone:</span> <span className="text-slate-800">{studentInfo.guardianPhone}</span></p>
+                        <p><span className="font-medium text-slate-600">Guardian Email:</span> <span className="text-slate-800">{studentInfo.guardianEmail || 'N/A'}</span></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Exam Marks Tab */}
+              {activeTab === 'marks' && (
+                <div className="space-y-4">
+                  <div className="bg-slate-50 rounded-xl p-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <input
                         type="text"
                         placeholder="Academic Year"
                         value={examFilters.academicYear}
                         onChange={(e) => setExamFilters({ ...examFilters, academicYear: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base"
                       />
-                    </Col>
-                    <Col md={4}>
-                      <Form.Control
+                      <input
                         type="text"
                         placeholder="Term/Semester"
                         value={examFilters.term}
                         onChange={(e) => setExamFilters({ ...examFilters, term: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base"
                       />
-                    </Col>
-                    <Col md={4}>
-                      <Form.Select
+                      <select
                         value={examFilters.examType}
                         onChange={(e) => setExamFilters({ ...examFilters, examType: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base bg-white"
                       >
                         <option value="">All Exam Types</option>
                         <option value="unit">Unit Test</option>
                         <option value="midterm">Midterm</option>
                         <option value="final">Final</option>
                         <option value="assignment">Assignment</option>
-                      </Form.Select>
-                    </Col>
-                  </Row>
-                </Card.Body>
-              </Card>
-              {examMarks.length === 0 ? (
-                <Alert variant="info">No exam marks found</Alert>
-              ) : (
-                <div className="table-responsive">
-                  <Table hover>
-                    <thead>
-                      <tr>
-                        <th>Exam</th>
-                        <th>Type</th>
-                        <th>Date</th>
-                        <th>Subjects</th>
-                        <th>Total Marks</th>
-                        <th>Percentage</th>
-                        <th>Grade</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {examMarks.map((exam, idx) => (
-                        <tr key={idx}>
-                          <td>{exam.examName}</td>
-                          <td>{exam.examType}</td>
-                          <td>{exam.examDate ? new Date(exam.examDate).toLocaleDateString() : 'N/A'}</td>
-                          <td>
-                            {exam.subjectMarks?.length > 0 ? (
-                              <div className="small">
-                                {exam.subjectMarks.map((sm, i) => (
-                                  <div key={i}>
-                                    {sm.subject?.name || sm.name || 'Subject'}: {sm.marksObtained || sm.obtainedMarks || 0}/{sm.maxMarks || 0}
-                                  </div>
-                                ))}
+                      </select>
+                    </div>
+                  </div>
+                  {examMarks.length === 0 ? (
+                    <div className="bg-sky-100 border-l-4 border-sky-500 text-sky-800 p-4 rounded-xl">No exam marks found</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-slate-200">
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Exam</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Type</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Date</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Total</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Percentage</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Grade</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {examMarks.map((exam, idx) => (
+                            <tr key={idx} className="bg-white hover:bg-violet-50 transition-colors">
+                              <td className="px-4 py-4 text-sm text-slate-800 font-medium">{exam.examName}</td>
+                              <td className="px-4 py-4 text-sm text-slate-600">{exam.examType}</td>
+                              <td className="px-4 py-4 text-sm text-slate-600">{exam.examDate ? new Date(exam.examDate).toLocaleDateString() : 'N/A'}</td>
+                              <td className="px-4 py-4 text-sm text-slate-800">{exam.totalMarksObtained}/{exam.totalMaxMarks}</td>
+                              <td className="px-4 py-4 text-sm text-slate-800 font-semibold">{exam.overallPercentage?.toFixed(2) || 0}%</td>
+                              <td className="px-4 py-4"><span className="px-2 py-1 rounded-full text-xs font-semibold bg-sky-100 text-sky-700">{exam.overallGrade || 'N/A'}</span></td>
+                              <td className="px-4 py-4"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${exam.isPassed ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>{exam.isPassed ? 'Pass' : 'Fail'}</span></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Transactions Tab */}
+              {activeTab === 'transactions' && (
+                <div className="space-y-6">
+                  {walletInfo && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
+                        <p className="text-violet-200 text-sm font-medium mb-1">Current Balance</p>
+                        <p className="text-3xl font-bold">{walletInfo.currentBalance?.toFixed(2) || '0.00'}</p>
+                        <p className="text-violet-200 text-xs mt-1">{walletInfo.currency || 'INR'}</p>
+                      </div>
+                      <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg">
+                        <p className="text-emerald-200 text-sm font-medium mb-1">Total Credit</p>
+                        <p className="text-3xl font-bold">{walletInfo.totalCredit?.toFixed(2) || '0.00'}</p>
+                        <p className="text-emerald-200 text-xs mt-1">{walletInfo.currency || 'INR'}</p>
+                      </div>
+                      <div className="bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl p-6 text-white shadow-lg">
+                        <p className="text-rose-200 text-sm font-medium mb-1">Total Debit</p>
+                        <p className="text-3xl font-bold">{walletInfo.totalDebit?.toFixed(2) || '0.00'}</p>
+                        <p className="text-rose-200 text-xs mt-1">{walletInfo.currency || 'INR'}</p>
+                      </div>
+                    </div>
+                  )}
+                  {transactions.length === 0 ? (
+                    <div className="bg-sky-100 border-l-4 border-sky-500 text-sky-800 p-4 rounded-xl">No transactions found</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-slate-200">
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Date</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Type</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Amount</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Source</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Remark</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Balance</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {transactions.map((tx) => (
+                            <tr key={tx.id} className="bg-white hover:bg-violet-50 transition-colors">
+                              <td className="px-4 py-4 text-sm text-slate-600">{new Date(tx.date).toLocaleDateString()}</td>
+                              <td className="px-4 py-4">
+                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                  tx.type === 'credit' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                                }`}>
+                                  {tx.type === 'credit' ? 'Credit' : 'Debit'}
+                                </span>
+                              </td>
+                              <td className={`px-4 py-4 text-sm font-semibold ${tx.type === 'credit' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {tx.type === 'credit' ? '+' : '-'}{tx.amount?.toFixed(2) || '0.00'}
+                              </td>
+                              <td className="px-4 py-4 text-sm text-slate-600">{tx.source || 'N/A'}</td>
+                              <td className="px-4 py-4 text-sm text-slate-600">{tx.creditRemark || tx.debitRemark || 'N/A'}</td>
+                              <td className="px-4 py-4 text-sm text-slate-800 font-medium">{tx.balanceAfter?.toFixed(2) || '0.00'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Notes Tab */}
+              {activeTab === 'notes' && (
+                <div className="space-y-4">
+                  {notes.length === 0 ? (
+                    <div className="bg-sky-100 border-l-4 border-sky-500 text-sky-800 p-4 rounded-xl">No notes available</div>
+                  ) : (
+                    notes.map((note) => (
+                      <div key={note.id || note._id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                        {note.title && (
+                          <h4 className="font-semibold text-slate-800 mb-2">{note.title}</h4>
+                        )}
+                        <p className="text-slate-700 mb-3 whitespace-pre-wrap">{note.content}</p>
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-3">
+                            {note.category && (
+                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                note.category === 'academic' ? 'bg-violet-100 text-violet-700' :
+                                note.category === 'attendance' ? 'bg-amber-100 text-amber-700' :
+                                note.category === 'behaviour' ? 'bg-rose-100 text-rose-700' :
+                                note.category === 'health' ? 'bg-emerald-100 text-emerald-700' :
+                                'bg-slate-100 text-slate-700'
+                              }`}>
+                                {note.category}
+                              </span>
+                            )}
+                            <span className="text-xs text-slate-500">
+                              By {note.createdBy || 'System'}
+                            </span>
+                          </div>
+                          <span className="text-xs text-slate-500">
+                            {new Date(note.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Requests Tab */}
+              {activeTab === 'requests' && (
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={() => setShowLeaveModal(true)}
+                      className="px-6 py-3 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200"
+                    >
+                      Apply for Leave
+                    </button>
+                    <button
+                      onClick={() => setShowVisitModal(true)}
+                      className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-semibold hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-200"
+                    >
+                      Request Visit
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="font-semibold text-slate-800 mb-4">Leave Requests</h3>
+                      {leaveRequests.length === 0 ? (
+                        <div className="bg-sky-100 border-l-4 border-sky-500 text-sky-800 p-4 rounded-xl">No leave requests</div>
+                      ) : (
+                        <div className="space-y-3">
+                          {leaveRequests.map((req) => (
+                            <div key={req.id || req._id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                              <div className="flex justify-between items-start mb-2">
+                                <span className="font-medium text-slate-800">{req.leaveType}</span>
+                                {getStatusBadge(req.status)}
                               </div>
-                            ) : 'N/A'}
-                          </td>
-                          <td>{exam.totalMarksObtained}/{exam.totalMaxMarks}</td>
-                          <td>{exam.overallPercentage?.toFixed(2) || 0}%</td>
-                          <td><Badge bg="info">{exam.overallGrade || 'N/A'}</Badge></td>
-                          <td><Badge bg={exam.isPassed ? 'success' : 'danger'}>{exam.isPassed ? 'Pass' : 'Fail'}</Badge></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </Table>
+                              <p className="text-sm text-slate-600 mb-1">{new Date(req.startDate).toLocaleDateString()} - {new Date(req.endDate).toLocaleDateString()}</p>
+                              <p className="text-sm text-slate-500">{req.reason}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-800 mb-4">Visit Requests</h3>
+                      {visitRequests.length === 0 ? (
+                        <div className="bg-sky-100 border-l-4 border-sky-500 text-sky-800 p-4 rounded-xl">No visit requests</div>
+                      ) : (
+                        <div className="space-y-3">
+                          {visitRequests.map((req) => (
+                            <div key={req.id || req._id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                              <div className="flex justify-between items-start mb-2">
+                                <span className="font-medium text-slate-800">{req.visitType}</span>
+                                {getStatusBadge(req.status)}
+                              </div>
+                              <p className="text-sm text-slate-600 mb-1">{new Date(req.preferredDate).toLocaleDateString()}</p>
+                              <p className="text-sm text-slate-600 mb-1">{req.preferredStartTime} - {req.preferredEndTime}</p>
+                              <p className="text-sm text-slate-500">{req.purpose}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </>
           )}
-        </Tab>
-
-        <Tab eventKey="transactions" title="💰 Transactions">
-          {loading ? <div className="text-center py-4"><Spinner /></div> : (
-            <Alert variant="info">
-              {transactions.length === 0 ? 'No transactions found. Transaction system coming soon.' : 'Transactions will be displayed here.'}
-            </Alert>
-          )}
-        </Tab>
-
-        <Tab eventKey="notes" title="📝 Notes">
-          {loading ? <div className="text-center py-4"><Spinner /></div> : (
-            notes.length === 0 ? (
-              <Alert variant="info">No notes available</Alert>
-            ) : (
-              <div>
-                {notes.map((note, idx) => (
-                  <Card key={idx} className="mb-3">
-                    <Card.Body>
-                      <p>{note.content}</p>
-                      <small className="text-muted">
-                        {note.createdBy} • {new Date(note.createdAt).toLocaleString()}
-                      </small>
-                    </Card.Body>
-                  </Card>
-                ))}
-              </div>
-            )
-          )}
-        </Tab>
-
-        <Tab eventKey="requests" title="📋 Requests">
-          <div className="mb-3">
-            <Button variant="primary" onClick={() => setShowLeaveModal(true)} className="me-2">Apply for Leave</Button>
-            <Button variant="success" onClick={() => setShowVisitModal(true)}>Request Visit</Button>
-          </div>
-
-          <Tabs defaultActiveKey="leave" className="mb-3">
-            <Tab eventKey="leave" title="Leave Requests">
-              {loading ? <div className="text-center py-4"><Spinner /></div> : (
-                leaveRequests.length === 0 ? (
-                  <Alert variant="info">No leave requests</Alert>
-                ) : (
-                  <Table hover>
-                    <thead>
-                      <tr>
-                        <th>Type</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
-                        <th>Reason</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {leaveRequests.map((req) => (
-                        <tr key={req.id || req._id}>
-                          <td>{req.leaveType}</td>
-                          <td>{new Date(req.startDate).toLocaleDateString()}</td>
-                          <td>{new Date(req.endDate).toLocaleDateString()}</td>
-                          <td>{req.reason}</td>
-                          <td>{getStatusBadge(req.status)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                )
-              )}
-            </Tab>
-            <Tab eventKey="visit" title="Visit Requests">
-              {loading ? <div className="text-center py-4"><Spinner /></div> : (
-                visitRequests.length === 0 ? (
-                  <Alert variant="info">No visit requests</Alert>
-                ) : (
-                  <Table hover>
-                    <thead>
-                      <tr>
-                        <th>Type</th>
-                        <th>Preferred Date</th>
-                        <th>Time</th>
-                        <th>Purpose</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visitRequests.map((req) => (
-                        <tr key={req.id || req._id}>
-                          <td>{req.visitType}</td>
-                          <td>{new Date(req.preferredDate).toLocaleDateString()}</td>
-                          <td>{req.preferredStartTime} - {req.preferredEndTime}</td>
-                          <td>{req.purpose}</td>
-                          <td>{getStatusBadge(req.status)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                )
-              )}
-            </Tab>
-          </Tabs>
-        </Tab>
-      </Tabs>
+        </div>
+      </div>
 
       {/* Leave Request Modal */}
-      <Modal show={showLeaveModal} onHide={() => setShowLeaveModal(false)} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>Apply for Leave</Modal.Title>
-        </Modal.Header>
-        <Form onSubmit={handleLeaveSubmit}>
-          <Modal.Body>
-            <Form.Group className="mb-3">
-              <Form.Label>Leave Type</Form.Label>
-              <Form.Select value={leaveForm.leaveType} onChange={(e) => setLeaveForm({ ...leaveForm, leaveType: e.target.value })} required>
-                <option value="">Select type</option>
-                <option value="sick_leave">Sick Leave</option>
-                <option value="family_emergency">Family Emergency</option>
-                <option value="personal">Personal</option>
-                <option value="medical_appointment">Medical Appointment</option>
-                <option value="family_function">Family Function</option>
-                <option value="other">Other</option>
-              </Form.Select>
-            </Form.Group>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Start Date</Form.Label>
-                  <Form.Control type="date" value={leaveForm.startDate} onChange={(e) => setLeaveForm({ ...leaveForm, startDate: e.target.value })} required />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>End Date</Form.Label>
-                  <Form.Control type="date" value={leaveForm.endDate} onChange={(e) => setLeaveForm({ ...leaveForm, endDate: e.target.value })} required />
-                </Form.Group>
-              </Col>
-            </Row>
-            <Form.Group className="mb-3">
-              <Form.Check type="checkbox" label="Full Day" checked={leaveForm.isFullDay} onChange={(e) => setLeaveForm({ ...leaveForm, isFullDay: e.target.checked })} />
-            </Form.Group>
-            {!leaveForm.isFullDay && (
-              <Row>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Start Time</Form.Label>
-                    <Form.Control type="time" value={leaveForm.startTime} onChange={(e) => setLeaveForm({ ...leaveForm, startTime: e.target.value })} />
-                  </Form.Group>
-                </Col>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>End Time</Form.Label>
-                    <Form.Control type="time" value={leaveForm.endTime} onChange={(e) => setLeaveForm({ ...leaveForm, endTime: e.target.value })} />
-                  </Form.Group>
-                </Col>
-              </Row>
-            )}
-            <Form.Group className="mb-3">
-              <Form.Label>Reason</Form.Label>
-              <Form.Control as="textarea" rows={3} value={leaveForm.reason} onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })} required />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Emergency Contact Name</Form.Label>
-              <Form.Control type="text" value={leaveForm.emergencyContact.name} onChange={(e) => setLeaveForm({ ...leaveForm, emergencyContact: { ...leaveForm.emergencyContact, name: e.target.value } })} />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Emergency Contact Phone</Form.Label>
-              <Form.Control type="text" value={leaveForm.emergencyContact.phone} onChange={(e) => setLeaveForm({ ...leaveForm, emergencyContact: { ...leaveForm.emergencyContact, phone: e.target.value } })} />
-            </Form.Group>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowLeaveModal(false)}>Cancel</Button>
-            <Button variant="primary" type="submit">Submit Request</Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
+      {showLeaveModal && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-800">Apply for Leave</h2>
+              <button onClick={() => setShowLeaveModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500">×</button>
+            </div>
+            <form onSubmit={handleLeaveSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Leave Type</label>
+                <select
+                  value={leaveForm.leaveType}
+                  onChange={(e) => setLeaveForm({ ...leaveForm, leaveType: e.target.value })}
+                  required
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base bg-white"
+                >
+                  <option value="">Select type</option>
+                  <option value="sick_leave">Sick Leave</option>
+                  <option value="family_emergency">Family Emergency</option>
+                  <option value="personal">Personal</option>
+                  <option value="medical_appointment">Medical Appointment</option>
+                  <option value="family_function">Family Function</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Start Date</label>
+                  <input
+                    type="date"
+                    value={leaveForm.startDate}
+                    onChange={(e) => setLeaveForm({ ...leaveForm, startDate: e.target.value })}
+                    required
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">End Date</label>
+                  <input
+                    type="date"
+                    value={leaveForm.endDate}
+                    onChange={(e) => setLeaveForm({ ...leaveForm, endDate: e.target.value })}
+                    required
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="fullDay"
+                  checked={leaveForm.isFullDay}
+                  onChange={(e) => setLeaveForm({ ...leaveForm, isFullDay: e.target.checked })}
+                  className="w-5 h-5 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                />
+                <label htmlFor="fullDay" className="text-sm font-medium text-slate-700">Full Day</label>
+              </div>
+              {!leaveForm.isFullDay && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Start Time</label>
+                    <input
+                      type="time"
+                      value={leaveForm.startTime}
+                      onChange={(e) => setLeaveForm({ ...leaveForm, startTime: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">End Time</label>
+                    <input
+                      type="time"
+                      value={leaveForm.endTime}
+                      onChange={(e) => setLeaveForm({ ...leaveForm, endTime: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base"
+                    />
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Reason</label>
+                <textarea
+                  rows={3}
+                  value={leaveForm.reason}
+                  onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })}
+                  required
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Emergency Contact Name</label>
+                <input
+                  type="text"
+                  value={leaveForm.emergencyContact.name}
+                  onChange={(e) => setLeaveForm({ ...leaveForm, emergencyContact: { ...leaveForm.emergencyContact, name: e.target.value } })}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Emergency Contact Phone</label>
+                <input
+                  type="text"
+                  value={leaveForm.emergencyContact.phone}
+                  onChange={(e) => setLeaveForm({ ...leaveForm, emergencyContact: { ...leaveForm.emergencyContact, phone: e.target.value } })}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base"
+                />
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowLeaveModal(false)}
+                  className="flex-1 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200"
+                >
+                  Submit Request
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Visit Request Modal */}
-      <Modal show={showVisitModal} onHide={() => setShowVisitModal(false)} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>Request Visit</Modal.Title>
-        </Modal.Header>
-        <Form onSubmit={handleVisitSubmit}>
-          <Modal.Body>
-            <Form.Group className="mb-3">
-              <Form.Label>Visit Type</Form.Label>
-              <Form.Select value={visitForm.visitType} onChange={(e) => setVisitForm({ ...visitForm, visitType: e.target.value })} required>
-                <option value="">Select type</option>
-                <option value="meet_student">Meet Student</option>
-                <option value="academic_discussion">Academic Discussion</option>
-                <option value="general_inquiry">General Inquiry</option>
-                <option value="other">Other</option>
-              </Form.Select>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Preferred Date</Form.Label>
-              <Form.Control type="date" value={visitForm.preferredDate} onChange={(e) => setVisitForm({ ...visitForm, preferredDate: e.target.value })} required />
-            </Form.Group>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Preferred Start Time</Form.Label>
-                  <Form.Control type="time" value={visitForm.preferredStartTime} onChange={(e) => setVisitForm({ ...visitForm, preferredStartTime: e.target.value })} required />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Preferred End Time</Form.Label>
-                  <Form.Control type="time" value={visitForm.preferredEndTime} onChange={(e) => setVisitForm({ ...visitForm, preferredEndTime: e.target.value })} required />
-                </Form.Group>
-              </Col>
-            </Row>
-            <Form.Group className="mb-3">
-              <Form.Label>Purpose</Form.Label>
-              <Form.Control as="textarea" rows={3} value={visitForm.purpose} onChange={(e) => setVisitForm({ ...visitForm, purpose: e.target.value })} required />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Number of Visitors</Form.Label>
-              <Form.Control type="number" min="1" value={visitForm.numberOfVisitors} onChange={(e) => setVisitForm({ ...visitForm, numberOfVisitors: parseInt(e.target.value) })} />
-            </Form.Group>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowVisitModal(false)}>Cancel</Button>
-            <Button variant="primary" type="submit">Submit Request</Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
-    </Container>
+      {showVisitModal && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-800">Request Visit</h2>
+              <button onClick={() => setShowVisitModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500">×</button>
+            </div>
+            <form onSubmit={handleVisitSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Visit Type</label>
+                <select
+                  value={visitForm.visitType}
+                  onChange={(e) => setVisitForm({ ...visitForm, visitType: e.target.value })}
+                  required
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base bg-white"
+                >
+                  <option value="">Select type</option>
+                  <option value="meet_student">Meet Student</option>
+                  <option value="academic_discussion">Academic Discussion</option>
+                  <option value="general_inquiry">General Inquiry</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Preferred Date</label>
+                <input
+                  type="date"
+                  value={visitForm.preferredDate}
+                  onChange={(e) => setVisitForm({ ...visitForm, preferredDate: e.target.value })}
+                  required
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Preferred Start Time</label>
+                  <input
+                    type="time"
+                    value={visitForm.preferredStartTime}
+                    onChange={(e) => setVisitForm({ ...visitForm, preferredStartTime: e.target.value })}
+                    required
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Preferred End Time</label>
+                  <input
+                    type="time"
+                    value={visitForm.preferredEndTime}
+                    onChange={(e) => setVisitForm({ ...visitForm, preferredEndTime: e.target.value })}
+                    required
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Purpose</label>
+                <textarea
+                  rows={3}
+                  value={visitForm.purpose}
+                  onChange={(e) => setVisitForm({ ...visitForm, purpose: e.target.value })}
+                  required
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Number of Visitors</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={visitForm.numberOfVisitors}
+                  onChange={(e) => setVisitForm({ ...visitForm, numberOfVisitors: parseInt(e.target.value) })}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base"
+                />
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowVisitModal(false)}
+                  className="flex-1 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200"
+                >
+                  Submit Request
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

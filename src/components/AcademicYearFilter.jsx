@@ -1,22 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Form, InputGroup } from 'react-bootstrap';
 import { getCurrentAcademicYear, getAcademicYearList } from '../api/academicYear';
 
-/**
- * Reusable Academic Year Filter Component
- * @param {Object} props
- * @param {string} props.value - Current selected academic year
- * @param {function} props.onChange - Callback when academic year changes
- * @param {boolean} props.showAllOption - Show "Show All Years" option (default: true)
- * @param {boolean} props.includeCurrentLabel - Include "(Current)" label (default: true)
- */
 const AcademicYearFilter = ({ 
   value, 
   onChange, 
   showAllOption = true,
-  includeCurrentLabel = true,
-  size = 'md',
-  label = 'Academic Year'
+  size = 'md'
 }) => {
   const [academicYears, setAcademicYears] = useState([]);
   const [currentYear, setCurrentYear] = useState('');
@@ -28,19 +17,15 @@ const AcademicYearFilter = ({
 
   const loadAcademicYearData = async () => {
     try {
-      // Load current academic year
       const currentYearResponse = await getCurrentAcademicYear();
       if (currentYearResponse.success) {
         const currentYearValue = currentYearResponse.data.academicYear;
         setCurrentYear(currentYearValue);
-        
-        // If no value is set, default to current year
         if (!value && onChange) {
           onChange(currentYearValue);
         }
       }
       
-      // Load academic year list
       const yearsResponse = await getAcademicYearList(5, 2);
       if (yearsResponse.success) {
         setAcademicYears(yearsResponse.data || []);
@@ -61,35 +46,27 @@ const AcademicYearFilter = ({
 
   if (loading) {
     return (
-      <Form.Group>
-        <Form.Label>{label}</Form.Label>
-        <Form.Select size={size} disabled>
-          <option>Loading...</option>
-        </Form.Select>
-      </Form.Group>
+      <select disabled className="w-full sm:w-auto px-4 py-3 text-base sm:text-sm border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-400 min-h-[48px] sm:min-h-[44px]">
+        <option>Loading...</option>
+      </select>
     );
   }
 
   return (
-    <Form.Group>
-      <Form.Label>{label}</Form.Label>
-      <InputGroup>
-        <Form.Select
-          size={size}
-          value={value || (showAllOption ? 'all' : currentYear)}
-          onChange={handleChange}
-        >
-          {showAllOption && (
-            <option value="all">Show All Years</option>
-          )}
-          {academicYears.map(year => (
-            <option key={year.value} value={year.value}>
-              {includeCurrentLabel ? year.label : year.value}
-            </option>
-          ))}
-        </Form.Select>
-      </InputGroup>
-    </Form.Group>
+    <select
+      value={value || (showAllOption ? 'all' : currentYear)}
+      onChange={handleChange}
+      className={`w-full sm:w-auto px-4 py-3 text-base sm:text-sm border-2 border-slate-200 rounded-xl bg-white text-slate-700 focus:outline-none focus:ring-4 focus:ring-violet-100 focus:border-violet-500 cursor-pointer transition-all min-h-[48px] sm:min-h-[44px] font-medium ${
+        size === 'sm' ? 'text-sm py-2 px-3' : ''
+      }`}
+    >
+      {showAllOption && <option value="all">All Years</option>}
+      {academicYears.map(year => (
+        <option key={year.value} value={year.value}>
+          {year.isCurrent ? `${year.value} (Current)` : year.value}
+        </option>
+      ))}
+    </select>
   );
 };
 

@@ -218,22 +218,22 @@ const StudentManagement = () => {
             const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
             const jsonData = XLSX.utils.sheet_to_json(firstSheet);
             
-            // Convert Excel data to student format
+            // Convert Excel data to student format - handle all column name variations
             const studentsArray = jsonData.map(row => ({
-              admissionNo: row['Admission No'] || row['admissionNo'] || row['AdmissionNo'] || '',
+              admissionNo: row['Admission no'] || row['Admission No'] || row['admissionNo'] || row['AdmissionNo'] || '',
               fullName: row['Full Name'] || row['fullName'] || row['FullName'] || row['Name'] || '',
-              dateOfBirth: row['Date of Birth'] || row['dateOfBirth'] || row['DateOfBirth'] || row['DOB'] || '',
-              gender: row['Gender'] || row['gender'] || '',
+              dateOfBirth: row['DOB'] || row['Date of Birth'] || row['dateOfBirth'] || row['DateOfBirth'] || '',
+              gender: row['Gender'] || row['gender'] || 'Male',
               bloodGroup: row['Blood Group'] || row['bloodGroup'] || row['BloodGroup'] || '',
-              phone: row['Phone'] || row['phone'] || '',
+              phone: row['Telephone / Mobile No'] || row['Phone'] || row['phone'] || '',
               email: row['Email'] || row['email'] || '',
-              address: row['Address'] || row['address'] || '',
+              address: row['Present Address'] || row['Address'] || row['address'] || '',
               fatherName: row['Father Name'] || row['fatherName'] || row['FatherName'] || '',
               motherName: row['Mother Name'] || row['motherName'] || row['MotherName'] || '',
-              guardianPhone: row['Guardian Phone'] || row['guardianPhone'] || row['GuardianPhone'] || '',
+              guardianPhone: row['Telephone / Mobile No'] || row['Guardian Phone'] || row['guardianPhone'] || row['GuardianPhone'] || '',
               guardianEmail: row['Guardian Email'] || row['guardianEmail'] || row['GuardianEmail'] || row['Parent Email'] || row['parentEmail'] || row['ParentEmail'] || '',
               department: row['Department'] || row['department'] || '',
-              admittedToStandard: row['Admitted To Standard'] || row['admittedToStandard'] || '',
+              admittedToStandard: row['Admitted to Standard'] || row['Admitted To Standard'] || row['admittedToStandard'] || '',
               currentStandard: row['Current Standard'] || row['currentStandard'] || '',
               shaakha: row['Shaakha'] || row['shaakha'] || '',
               gothra: row['Gothra'] || row['gothra'] || '',

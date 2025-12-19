@@ -120,10 +120,8 @@ const ExamManagement = () => {
         params.academicYear = filters.academicYear;
         params.showAllYears = 'false';
       } else if (filters.academicYear === '' || filters.academicYear === 'all') {
-        // Show all years
         params.showAllYears = 'true';
       } else {
-        // Default to current year if not specified
         params.showAllYears = 'false';
       }
       const response = await examsAPI.getExams(params);
