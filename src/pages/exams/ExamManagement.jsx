@@ -12,6 +12,22 @@ import {
 } from '../../api/exams';
 import AcademicYearFilter from '../../components/AcademicYearFilter';
 
+// Standard options for student selection
+const STANDARD_OPTIONS = [
+  'Pratham 1st Year',
+  'Pratham 2nd Year',
+  'Pratham 3rd Year',
+  'Pravesh 1st Year',
+  'Pravesh 2nd Year',
+  'Moola 1st Year',
+  'Moola 2nd Year',
+  'B.A. 1st Year',
+  'B.A. 2nd Year',
+  'B.A. 3rd Year',
+  'M.A. 1st Year',
+  'M.A. 2nd Year'
+];
+
 const ExamManagement = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -66,10 +82,11 @@ const ExamManagement = () => {
   const [groupForm, setGroupForm] = useState({
     groupName: '',
     description: '',
-    selectionType: 'by-department', // manual, by-department, by-subdepartment, by-batch, mixed
+    selectionType: 'by-department', // manual, by-department, by-subdepartment, by-batch, by-standard, mixed
     selectedDepartments: [],
     selectedSubDepartments: [],
     selectedBatches: [],
+    selectedStandards: [],
     selectedStudents: [],
     academicYear: ''
   });
@@ -199,6 +216,9 @@ const ExamManagement = () => {
         filters.subDepartmentId = groupForm.selectedSubDepartments[0];
       } else if (groupForm.selectionType === 'by-batch' && groupForm.selectedBatches.length > 0) {
         filters.batchId = groupForm.selectedBatches[0];
+      } else if (groupForm.selectionType === 'by-standard' && groupForm.selectedStandards.length > 0) {
+        // Pass all selected standards as an array
+        filters.standard = groupForm.selectedStandards;
       } else if (groupForm.selectionType === 'mixed') {
         // For mixed, show students from first selected entity
         if (groupForm.selectedDepartments.length > 0) {
@@ -207,6 +227,8 @@ const ExamManagement = () => {
           filters.subDepartmentId = groupForm.selectedSubDepartments[0];
         } else if (groupForm.selectedBatches.length > 0) {
           filters.batchId = groupForm.selectedBatches[0];
+        } else if (groupForm.selectedStandards.length > 0) {
+          filters.standard = groupForm.selectedStandards;
         }
       }
 
@@ -232,7 +254,7 @@ const ExamManagement = () => {
     if (showSelectStudents && groupForm.selectionType !== 'manual') {
       loadStudents();
     }
-  }, [showSelectStudents, groupForm.selectionType, groupForm.selectedDepartments, groupForm.selectedSubDepartments, groupForm.selectedBatches]);
+  }, [showSelectStudents, groupForm.selectionType, groupForm.selectedDepartments, groupForm.selectedSubDepartments, groupForm.selectedBatches, groupForm.selectedStandards]);
 
   const handleCreateExam = async (e) => {
     e.preventDefault();
@@ -337,10 +359,13 @@ const ExamManagement = () => {
         studentSelection.academicFilters.subDepartments = groupForm.selectedSubDepartments;
       } else if (groupForm.selectionType === 'by-batch') {
         studentSelection.academicFilters.batches = groupForm.selectedBatches;
+      } else if (groupForm.selectionType === 'by-standard') {
+        studentSelection.academicFilters.standards = groupForm.selectedStandards;
       } else if (groupForm.selectionType === 'mixed') {
         studentSelection.academicFilters.departments = groupForm.selectedDepartments;
         studentSelection.academicFilters.subDepartments = groupForm.selectedSubDepartments;
         studentSelection.academicFilters.batches = groupForm.selectedBatches;
+        studentSelection.academicFilters.standards = groupForm.selectedStandards;
       }
 
       const groupData = {
@@ -359,7 +384,7 @@ const ExamManagement = () => {
         setGroupForm({
           groupName: '', description: '', selectionType: 'by-department',
           selectedDepartments: [], selectedSubDepartments: [], selectedBatches: [],
-          selectedStudents: [], academicYear: ''
+          selectedStandards: [], selectedStudents: [], academicYear: ''
         });
         await loadExamGroups(selectedExam._id || selectedExam.id);
       } else {
@@ -558,7 +583,7 @@ const ExamManagement = () => {
                       setGroupForm({
                         groupName: '', description: '', selectionType: 'by-department',
                         selectedDepartments: [], selectedSubDepartments: [], selectedBatches: [],
-                        selectedStudents: [], academicYear: selectedExam.academicInfo?.academicYear || ''
+                        selectedStandards: [], selectedStudents: [], academicYear: selectedExam.academicInfo?.academicYear || ''
                       });
                       setShowCreateGroup(true);
                     }}
@@ -962,6 +987,7 @@ const ExamManagement = () => {
                   selectedDepartments: [],
                   selectedSubDepartments: [],
                   selectedBatches: [],
+                  selectedStandards: [],
                   selectedStudents: []
                 })}
                 required
@@ -969,6 +995,7 @@ const ExamManagement = () => {
                 <option value="by-department">By Department</option>
                 <option value="by-subdepartment">By Sub-Department</option>
                 <option value="by-batch">By Batch</option>
+                <option value="by-standard">By Standard</option>
                 <option value="mixed">Mixed (Multiple Filters)</option>
                 <option value="manual">Manual Selection</option>
               </Form.Select>
@@ -1040,6 +1067,30 @@ const ExamManagement = () => {
               </Form.Group>
             )}
 
+            {groupForm.selectionType === 'by-standard' && (
+              <Form.Group className="mb-3">
+                <Form.Label>Select Standard(s) *</Form.Label>
+                <Form.Select
+                  multiple
+                  value={groupForm.selectedStandards}
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.selectedOptions, option => option.value);
+                    setGroupForm({...groupForm, selectedStandards: selected});
+                  }}
+                  required
+                >
+                  {STANDARD_OPTIONS.map(standard => (
+                    <option key={standard} value={standard}>
+                      {standard}
+                    </option>
+                  ))}
+                </Form.Select>
+                <Form.Text className="text-muted">
+                  Hold Ctrl/Cmd to select multiple standards. Students with matching current standard will be included.
+                </Form.Text>
+              </Form.Group>
+            )}
+
             {groupForm.selectionType === 'mixed' && (
               <>
                 <Form.Group className="mb-3">
@@ -1093,8 +1144,26 @@ const ExamManagement = () => {
                     ))}
                   </Form.Select>
                 </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Select Standard(s)</Form.Label>
+                  <Form.Select
+                    multiple
+                    value={groupForm.selectedStandards}
+                    onChange={(e) => {
+                      const selected = Array.from(e.target.selectedOptions, option => option.value);
+                      setGroupForm({...groupForm, selectedStandards: selected});
+                    }}
+                  >
+                    {STANDARD_OPTIONS.map(standard => (
+                      <option key={standard} value={standard}>
+                        {standard}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Text className="text-muted">Hold Ctrl/Cmd to select multiple standards</Form.Text>
+                </Form.Group>
                 <Alert variant="info">
-                  At least one filter (department, sub-department, or batch) must be selected for mixed selection.
+                  At least one filter (department, sub-department, batch, or standard) must be selected for mixed selection.
                 </Alert>
               </>
             )}

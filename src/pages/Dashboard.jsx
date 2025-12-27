@@ -3,7 +3,7 @@ import { useAuth } from '../store/auth';
 import { ROLES } from '../utils/roles';
 import AcademicYearFilter from '../components/AcademicYearFilter';
 import api from '../api/client';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const StatCard = ({ title, value, subtitle, icon, color, badges }) => {
   const colorClasses = {
@@ -53,6 +53,7 @@ const QuickAccessCard = ({ item }) => (
 
 const getMenuForRole = (role) => {
   const adminMenu = [
+    { label: 'Take Attendance', href: '/attendance', description: 'Mark daily attendance', icon: '📋' },
     { label: 'Departments', href: '/departments', description: 'Manage departments', icon: '🏛️' },
     { label: 'Students', href: '/students', description: 'Student management', icon: '👨‍🎓' },
     { label: 'Teachers', href: '/teachers', description: 'Teacher management', icon: '👨‍🏫' },
@@ -64,10 +65,17 @@ const getMenuForRole = (role) => {
   ];
 
   const teacherMenu = [
+    { label: 'Take Attendance', href: '/attendance', description: 'Mark daily attendance', icon: '📋' },
     { label: 'Classes', href: '/classes', description: 'Your classes', icon: '🏫' },
     { label: 'Exams', href: '/exams', description: 'Manage exams', icon: '📝' },
     { label: 'Results', href: '/exam-results', description: 'View results', icon: '🏆' },
     { label: 'Reports', href: '/reports', description: 'Reports', icon: '📈' },
+  ];
+
+  const caretakerMenu = [
+    { label: 'Take Attendance', href: '/attendance', description: 'Mark daily attendance', icon: '📋' },
+    { label: 'Students', href: '/students', description: 'View students', icon: '👨‍🎓' },
+    { label: 'Reports', href: '/reports', description: 'View reports', icon: '📈' },
   ];
 
   switch (role) {
@@ -77,6 +85,8 @@ const getMenuForRole = (role) => {
       return adminMenu;
     case ROLES.TEACHER:
       return teacherMenu;
+    case ROLES.CARETAKER:
+      return caretakerMenu;
     default:
       return adminMenu;
   }
@@ -84,10 +94,14 @@ const getMenuForRole = (role) => {
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [academicYear, setAcademicYear] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Check if user can take attendance (all roles except Parent)
+  const canTakeAttendance = user?.role && user.role !== ROLES.PARENT;
 
   useEffect(() => {
     if (academicYear !== null) {
@@ -116,6 +130,24 @@ const Dashboard = () => {
     }
   };
 
+  // Additional protection: Redirect parents immediately if they somehow access this
+  useEffect(() => {
+    if (user?.role === ROLES.PARENT) {
+      navigate('/parent-dashboard', { replace: true });
+    }
+  }, [user, navigate]);
+
+  // Don't render admin dashboard for parents (backup protection)
+  if (user?.role === ROLES.PARENT) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-slate-600 mb-4">Redirecting to your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="bg-amber-100 text-amber-800 p-4 rounded-xl font-medium">
@@ -137,11 +169,22 @@ const Dashboard = () => {
           </h1>
           <p className="text-slate-500 mt-1">Here's what's happening in your school today</p>
         </div>
-        <AcademicYearFilter
-          value={academicYear}
-          onChange={setAcademicYear}
-          size="sm"
-        />
+        <div className="flex items-center gap-3">
+          {canTakeAttendance && (
+            <Link
+              to="/attendance"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all"
+            >
+              <span className="text-lg">📋</span>
+              <span>Take Regular Attendance</span>
+            </Link>
+          )}
+          <AcademicYearFilter
+            value={academicYear}
+            onChange={setAcademicYear}
+            size="sm"
+          />
+        </div>
       </div>
 
       {/* Error */}

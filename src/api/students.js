@@ -39,6 +39,17 @@ export const studentsAPI = {
     return response.data;
   },
 
+  // Health records
+  getHealthRecords: async (studentId) => {
+    const response = await api.get(`/students/${studentId}/health-records`);
+    return response.data;
+  },
+
+  addHealthRecord: async (studentId, data) => {
+    const response = await api.post(`/students/${studentId}/health-records`, data);
+    return response.data;
+  },
+
   // Get student statistics
   getStudentStats: async () => {
     const response = await api.get('/students/stats/overview');

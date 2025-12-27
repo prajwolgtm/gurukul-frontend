@@ -52,6 +52,7 @@ const RoleBasedNav = ({ mobile, onItemClick }) => {
       { to: '/classes', label: '🏫 Classes' },
       { to: '/reports', label: '📈 Reports' },
       { to: '/exam-results', label: '🏆 Results' },
+      { to: '/security-scanner', label: '🔒 QR Scanner' },
     ],
     [ROLES.COORDINATOR]: [
       { to: '/', label: '📊 Dashboard' },
@@ -100,6 +101,7 @@ const RoleBasedNav = ({ mobile, onItemClick }) => {
       { to: '/', label: '📊 Dashboard' },
       { to: '/students', label: '👨‍🎓 Students' },
       { to: '/reports', label: '📈 Reports' },
+      { to: '/security-scanner', label: '🔒 QR Scanner' },
     ],
   };
 

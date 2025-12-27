@@ -38,6 +38,63 @@ export const examsAPI = {
   deleteExam: async (id) => {
     const response = await api.delete(`/exam-management/${id}`);
     return response.data;
+  },
+
+  // Get students by entity (department, sub-department, batch, standard)
+  getStudentsByEntity: async (filters = {}) => {
+    const queryParams = new URLSearchParams();
+    if (filters.departmentId) queryParams.append('departmentId', filters.departmentId);
+    if (filters.subDepartmentId) queryParams.append('subDepartmentId', filters.subDepartmentId);
+    if (filters.batchId) queryParams.append('batchId', filters.batchId);
+    if (filters.standard) {
+      // Support both single standard and array
+      if (Array.isArray(filters.standard)) {
+        filters.standard.forEach(s => queryParams.append('standard', s));
+      } else {
+        queryParams.append('standard', filters.standard);
+      }
+    }
+    if (filters.academicYear) queryParams.append('academicYear', filters.academicYear);
+    if (filters.search) queryParams.append('search', filters.search);
+    
+    const response = await api.get(`/classes/helpers/students-by-entity?${queryParams.toString()}`);
+    return response.data;
+  },
+
+  // Get academic entities (departments, sub-departments, batches)
+  getAcademicEntities: async () => {
+    const response = await api.get('/academic/entities');
+    return response.data;
+  },
+
+  // Get available teachers
+  getAvailableTeachers: async () => {
+    const response = await api.get('/users/teachers');
+    return response.data;
+  },
+
+  // Get exam groups
+  getExamGroups: async (examId) => {
+    const response = await api.get(`/exam-management/${examId}/groups`);
+    return response.data;
+  },
+
+  // Create exam group
+  createExamGroup: async (examId, groupData) => {
+    const response = await api.post(`/exam-management/${examId}/groups`, groupData);
+    return response.data;
+  },
+
+  // Assign teachers to group
+  assignGroupTeachers: async (examId, groupId, teacherIds) => {
+    const response = await api.post(`/exam-management/${examId}/groups/${groupId}/teachers`, { teacherIds });
+    return response.data;
+  },
+
+  // Manage group students
+  manageGroupStudents: async (examId, groupId, studentIds) => {
+    const response = await api.put(`/exam-management/${examId}/groups/${groupId}/students`, { studentIds });
+    return response.data;
   }
 };
 
@@ -167,5 +224,19 @@ export const examMarksAPI = {
     }
   }
 };
+
+// Named exports for convenience
+export const {
+  getExams,
+  createExam,
+  getExam,
+  getStudentsByEntity,
+  getAcademicEntities,
+  getAvailableTeachers,
+  getExamGroups,
+  createExamGroup,
+  assignGroupTeachers,
+  manageGroupStudents
+} = examsAPI;
 
 export default examsAPI;

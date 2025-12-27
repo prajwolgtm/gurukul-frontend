@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/auth';
+import { ROLES } from '../utils/roles';
 import RoleBasedNav from './RoleBasedNav';
 
 const Layout = ({ children }) => {
@@ -21,7 +22,7 @@ const Layout = ({ children }) => {
           <div className="flex justify-between h-16">
             {/* Logo */}
             <div className="flex items-center">
-              <Link to="/" className="flex items-center gap-3">
+              <Link to={user?.role === ROLES.PARENT ? '/parent-dashboard' : '/'} className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-200">
                   <span className="text-xl text-white">🎓</span>
                 </div>

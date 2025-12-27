@@ -11,6 +11,22 @@ import { ROLES } from '../utils/roles';
 import studentsAPI from '../api/students';
 import academicAPI from '../api/academic';
 
+// Standard options for dropdowns
+const STANDARD_OPTIONS = [
+  'Pratham 1st Year',
+  'Pratham 2nd Year',
+  'Pratham 3rd Year',
+  'Pravesh 1st Year',
+  'Pravesh 2nd Year',
+  'Moola 1st Year',
+  'Moola 2nd Year',
+  'B.A. 1st Year',
+  'B.A. 2nd Year',
+  'B.A. 3rd Year',
+  'M.A. 1st Year',
+  'M.A. 2nd Year'
+];
+
 const StudentManagement = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -62,6 +78,12 @@ const StudentManagement = () => {
   });
   const [showLeftout, setShowLeftout] = useState(false);
 
+  // Sorting states
+  const [sortConfig, setSortConfig] = useState({
+    key: null,
+    direction: 'asc' // 'asc' or 'desc'
+  });
+
   // Bulk upload states
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [bulkUploadData, setBulkUploadData] = useState('');
@@ -78,10 +100,10 @@ const StudentManagement = () => {
     loadInitialData();
   }, []);
 
-  // Load students when filters or showLeftout changes
+  // Load students when filters, showLeftout, or sortConfig changes
   useEffect(() => {
     loadStudents();
-  }, [filters, showLeftout]);
+  }, [filters, showLeftout, sortConfig]);
 
   const loadInitialData = async () => {
     try {
@@ -112,10 +134,12 @@ const StudentManagement = () => {
   const loadStudents = async () => {
     try {
       setLoading(true);
-      // Build query params with includeLeftout flag
+      // Build query params with includeLeftout flag and sorting
       const queryParams = {
         ...filters,
-        includeLeftout: showLeftout ? 'true' : 'false'
+        includeLeftout: showLeftout ? 'true' : 'false',
+        sortBy: sortConfig.key || 'fullName',
+        sortOrder: sortConfig.direction || 'asc'
       };
       const response = await studentsAPI.getStudents(queryParams);
       console.log('📊 Students API Response:', response);
@@ -136,6 +160,17 @@ const StudentManagement = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle column sorting - triggers backend sort
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+    // Reset to page 1 when sorting changes
+    setFilters(prev => ({ ...prev, page: 1 }));
   };
 
   const loadSubDepartments = async (departmentId) => {
@@ -621,10 +656,11 @@ const StudentManagement = () => {
                       onChange={handleFilterChange}
                     >
                       <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
                       <option value="graduated">Graduated</option>
                       <option value="transferred">Transferred</option>
                       <option value="leftout">Left Out</option>
+                      <option value="Completed Moola">Completed Moola</option>
+                      <option value="Post Graduated">Post Graduated</option>
                       <option value="">All Status</option>
                     </Form.Select>
                   </Form.Group>
@@ -688,13 +724,64 @@ const StudentManagement = () => {
                   <Table striped hover className="mb-0">
                     <thead className="table-dark">
                       <tr>
-                        <th>Admission No</th>
-                        <th>Student Name</th>
-                        <th>Father's Name</th>
-                        <th>Department</th>
+                        <th 
+                          style={{ cursor: 'pointer', userSelect: 'none' }}
+                          onClick={() => handleSort('admissionNo')}
+                        >
+                          Admission No
+                          {sortConfig.key === 'admissionNo' && (
+                            <span className="ms-2">
+                              {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </th>
+                        <th 
+                          style={{ cursor: 'pointer', userSelect: 'none' }}
+                          onClick={() => handleSort('fullName')}
+                        >
+                          Student Name
+                          {sortConfig.key === 'fullName' && (
+                            <span className="ms-2">
+                              {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </th>
+                        <th 
+                          style={{ cursor: 'pointer', userSelect: 'none' }}
+                          onClick={() => handleSort('fatherName')}
+                        >
+                          Father's Name
+                          {sortConfig.key === 'fatherName' && (
+                            <span className="ms-2">
+                              {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </th>
+                        <th 
+                          style={{ cursor: 'pointer', userSelect: 'none' }}
+                          onClick={() => handleSort('department')}
+                        >
+                          Department
+                          {sortConfig.key === 'department' && (
+                            <span className="ms-2">
+                              {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </th>
+                        <th>Current Standard</th>
                         <th>Sub-Departments</th>
                         <th>Batches</th>
-                        <th>Status</th>
+                        <th 
+                          style={{ cursor: 'pointer', userSelect: 'none' }}
+                          onClick={() => handleSort('status')}
+                        >
+                          Status
+                          {sortConfig.key === 'status' && (
+                            <span className="ms-2">
+                              {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </th>
                         <th>Actions</th>
                       </tr>
                     </thead>
@@ -719,6 +806,15 @@ const StudentManagement = () => {
                             <Badge bg="primary">
                               {student.department?.name || 'N/A'}
                             </Badge>
+                          </td>
+                          <td>
+                            {student.currentStandard ? (
+                              <Badge bg="secondary">
+                                {student.currentStandard}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted">N/A</span>
+                            )}
                           </td>
                           <td>
                             {student.subDepartments?.length > 0 ? (
@@ -746,10 +842,11 @@ const StudentManagement = () => {
                             <Badge 
                               bg={
                                 student.status === 'active' ? 'success' :
-                                student.status === 'inactive' ? 'danger' :
                                 student.status === 'graduated' ? 'primary' :
                                 student.status === 'leftout' ? 'warning' :
                                 student.status === 'transferred' ? 'info' :
+                                student.status === 'Completed Moola' ? 'info' :
+                                student.status === 'Post Graduated' ? 'primary' :
                                 'warning'
                               }
                             >
@@ -1118,23 +1215,35 @@ const StudentManagement = () => {
                   <Col md={4}>
                     <Form.Group className="mb-3">
                       <Form.Label>Admitted to Standard</Form.Label>
-                      <Form.Control
-                        type="text"
+                      <Form.Select
                         name="admittedToStandard"
                         value={formData.admittedToStandard}
                         onChange={handleFormChange}
-                      />
+                      >
+                        <option value="">Select Standard</option>
+                        {STANDARD_OPTIONS.map(standard => (
+                          <option key={standard} value={standard}>
+                            {standard}
+                          </option>
+                        ))}
+                      </Form.Select>
                     </Form.Group>
                   </Col>
                   <Col md={4}>
                     <Form.Group className="mb-3">
                       <Form.Label>Current Standard</Form.Label>
-                      <Form.Control
-                        type="text"
+                      <Form.Select
                         name="currentStandard"
                         value={formData.currentStandard}
                         onChange={handleFormChange}
-                      />
+                      >
+                        <option value="">Select Standard</option>
+                        {STANDARD_OPTIONS.map(standard => (
+                          <option key={standard} value={standard}>
+                            {standard}
+                          </option>
+                        ))}
+                      </Form.Select>
                     </Form.Group>
                   </Col>
                   <Col md={4}>
@@ -1157,10 +1266,11 @@ const StudentManagement = () => {
                         onChange={handleFormChange}
                       >
                         <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
                         <option value="graduated">Graduated</option>
                         <option value="transferred">Transferred</option>
                         <option value="leftout">Left Out</option>
+                        <option value="Completed Moola">Completed Moola</option>
+                        <option value="Post Graduated">Post Graduated</option>
                       </Form.Select>
                     </Form.Group>
                   </Col>

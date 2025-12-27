@@ -115,7 +115,7 @@ const DailyAttendanceReport = () => {
   };
 
   return (
-    <div style={{ background: 'linear-gradient(180deg, #f6f8fc 0%, #ffffff 55%)', padding: '12px', borderRadius: '12px' }}>
+    <div style={{ background: 'linear-gradient(180deg, #f6f8fc 0%, #ffffff 55%)', padding: '12px', borderRadius: '12px', width: '100%', boxSizing: 'border-box' }}>
       <Card className="mb-3 border-0" style={{ boxShadow: '0 4px 12px rgba(15, 23, 42, 0.06)' }}>
         <Card.Header className="bg-white border-0 d-flex justify-content-between align-items-center">
           <h5 className="mb-0">📊 Daily Attendance Report</h5>
@@ -235,24 +235,33 @@ const DailyAttendanceReport = () => {
               <h6 className="mb-0">Attendance Details</h6>
             </Card.Header>
             <Card.Body className="p-0">
-              <div className="table-responsive" style={{ maxHeight: '600px', overflowY: 'auto' }}>
-                <Table striped hover className="mb-0">
-                  <thead className="table-dark sticky-top">
+              <div 
+                style={{ 
+                  maxHeight: '600px', 
+                  overflowY: 'auto',
+                  overflowX: 'scroll',
+                  width: '100%',
+                  display: 'block',
+                  position: 'relative'
+                }}
+              >
+                <Table striped hover className="mb-0" style={{ width: 'auto', marginBottom: 0, tableLayout: 'auto' }}>
+                  <thead className="table-dark sticky-top" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                     <tr>
-                      <th>S.No</th>
-                      <th>Admission No</th>
-                      <th>Student Name</th>
+                      <th style={{ position: 'sticky', left: 0, zIndex: 11, backgroundColor: '#212529', minWidth: '50px', whiteSpace: 'nowrap', padding: '8px' }}>S.No</th>
+                      <th style={{ position: 'sticky', left: '50px', zIndex: 11, backgroundColor: '#212529', minWidth: '100px', whiteSpace: 'nowrap', padding: '8px' }}>Admission No</th>
+                      <th style={{ position: 'sticky', left: '150px', zIndex: 11, backgroundColor: '#212529', minWidth: '150px', whiteSpace: 'nowrap', padding: '8px' }}>Student Name</th>
                       {attendanceData.sessions?.map((session, idx) => (
-                        <th key={idx} className="text-center" style={{ minWidth: '80px' }}>
+                        <th key={idx} className="text-center" style={{ minWidth: '100px', whiteSpace: 'nowrap', padding: '8px' }}>
                           {session.name}
                         </th>
                       ))}
-                      <th className="text-center">Present</th>
-                      <th className="text-center">Absent</th>
-                      <th className="text-center">Sick</th>
-                      <th className="text-center">Leave</th>
-                      <th className="text-center">%</th>
-                      <th className="text-center">Status</th>
+                      <th className="text-center" style={{ minWidth: '70px', whiteSpace: 'nowrap', padding: '8px' }}>Present</th>
+                      <th className="text-center" style={{ minWidth: '70px', whiteSpace: 'nowrap', padding: '8px' }}>Absent</th>
+                      <th className="text-center" style={{ minWidth: '70px', whiteSpace: 'nowrap', padding: '8px' }}>Sick</th>
+                      <th className="text-center" style={{ minWidth: '70px', whiteSpace: 'nowrap', padding: '8px' }}>Leave</th>
+                      <th className="text-center" style={{ minWidth: '60px', whiteSpace: 'nowrap', padding: '8px' }}>%</th>
+                      <th className="text-center" style={{ minWidth: '80px', whiteSpace: 'nowrap', padding: '8px' }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -265,41 +274,41 @@ const DailyAttendanceReport = () => {
                     ) : (
                       attendanceData.attendanceRecords?.map((record, idx) => (
                         <tr key={record._id || idx}>
-                          <td>{idx + 1}</td>
-                          <td>{record.student?.admissionNo || 'N/A'}</td>
-                          <td>{record.student?.fullName || 'Unknown Student'}</td>
+                          <td style={{ position: 'sticky', left: 0, zIndex: 6, backgroundColor: idx % 2 === 0 ? '#fff' : '#f8f9fa', minWidth: '50px', whiteSpace: 'nowrap', padding: '8px' }}>{idx + 1}</td>
+                          <td style={{ position: 'sticky', left: '50px', zIndex: 6, backgroundColor: idx % 2 === 0 ? '#fff' : '#f8f9fa', minWidth: '100px', whiteSpace: 'nowrap', padding: '8px' }}>{record.student?.admissionNo || 'N/A'}</td>
+                          <td style={{ position: 'sticky', left: '150px', zIndex: 6, backgroundColor: idx % 2 === 0 ? '#fff' : '#f8f9fa', minWidth: '150px', whiteSpace: 'nowrap', padding: '8px' }}>{record.student?.fullName || 'Unknown Student'}</td>
                           {attendanceData.sessions?.map((session, sidx) => {
                             const sessionStatus = record.sessions?.[session.key]?.status || 'Present';
                             return (
-                              <td key={sidx} className="text-center">
+                              <td key={sidx} className="text-center" style={{ minWidth: '100px', whiteSpace: 'nowrap', padding: '8px' }}>
                                 {getStatusBadge(sessionStatus)}
                               </td>
                             );
                           })}
-                          <td className="text-center">
+                          <td className="text-center" style={{ minWidth: '70px', whiteSpace: 'nowrap', padding: '8px' }}>
                             <Badge bg="success">
                               {record.statistics?.presentCount || 0}
                             </Badge>
                           </td>
-                          <td className="text-center">
+                          <td className="text-center" style={{ minWidth: '70px', whiteSpace: 'nowrap', padding: '8px' }}>
                             <Badge bg="danger">
                               {record.statistics?.absentCount || 0}
                             </Badge>
                           </td>
-                          <td className="text-center">
+                          <td className="text-center" style={{ minWidth: '70px', whiteSpace: 'nowrap', padding: '8px' }}>
                             <Badge bg="warning">
                               {record.statistics?.sickCount || 0}
                             </Badge>
                           </td>
-                          <td className="text-center">
+                          <td className="text-center" style={{ minWidth: '70px', whiteSpace: 'nowrap', padding: '8px' }}>
                             <Badge bg="info">
                               {record.statistics?.leaveCount || 0}
                             </Badge>
                           </td>
-                          <td className="text-center">
+                          <td className="text-center" style={{ minWidth: '60px', whiteSpace: 'nowrap', padding: '8px' }}>
                             <strong>{record.statistics?.attendancePercentage?.toFixed(1) || 0}%</strong>
                           </td>
-                          <td className="text-center">
+                          <td className="text-center" style={{ minWidth: '80px', whiteSpace: 'nowrap', padding: '8px' }}>
                             {getOverallStatusBadge(record.overallStatus)}
                           </td>
                         </tr>

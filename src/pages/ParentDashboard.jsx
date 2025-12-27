@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { parentDashboardAPI } from '../api/parent-dashboard';
 import { getLeaveRequests, createLeaveRequest, getVisitRequests, createVisitRequest } from '../api/requests';
 import { useAuth } from '../store/auth';
@@ -48,6 +49,9 @@ const ParentDashboard = () => {
     purpose: '',
     numberOfVisitors: 1
   });
+
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [selectedQR, setSelectedQR] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -200,7 +204,7 @@ const ParentDashboard = () => {
               {/* Basic Info Tab */}
               {activeTab === 'info' && studentInfo && (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="bg-slate-50 rounded-xl p-5">
                       <h3 className="font-semibold text-slate-800 mb-4">Personal Information</h3>
                       <div className="space-y-2 text-sm">
@@ -222,6 +226,52 @@ const ParentDashboard = () => {
                         <p><span className="font-medium text-slate-600">Gothra:</span> <span className="text-slate-800">{studentInfo.gothra || 'N/A'}</span></p>
                         <p><span className="font-medium text-slate-600">Status:</span> <span className={`px-2 py-1 rounded-full text-xs font-semibold ${studentInfo.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>{studentInfo.status}</span></p>
                       </div>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-5">
+                      <h3 className="font-semibold text-slate-800 mb-4">Health Information</h3>
+                      <div className="space-y-2 text-sm">
+                        <p>
+                          <span className="font-medium text-slate-600">Height:</span>{' '}
+                          <span className="text-slate-800">
+                            {studentInfo.latestHealth?.heightCm
+                              ? `${studentInfo.latestHealth.heightCm} cm`
+                              : 'N/A'}
+                          </span>
+                        </p>
+                        <p>
+                          <span className="font-medium text-slate-600">Weight:</span>{' '}
+                          <span className="text-slate-800">
+                            {studentInfo.latestHealth?.weightKg
+                              ? `${studentInfo.latestHealth.weightKg} kg`
+                              : 'N/A'}
+                          </span>
+                        </p>
+                        <p>
+                          <span className="font-medium text-slate-600">Last Check-up:</span>{' '}
+                          <span className="text-slate-800">
+                            {studentInfo.latestHealth?.lastCheckupDate
+                              ? new Date(studentInfo.latestHealth.lastCheckupDate).toLocaleDateString()
+                              : 'N/A'}
+                          </span>
+                        </p>
+                        <p>
+                          <span className="font-medium text-slate-600">Health Condition:</span>{' '}
+                          <span className="text-slate-800">
+                            {studentInfo.latestHealth?.condition || 'No specific condition recorded'}
+                          </span>
+                        </p>
+                        {studentInfo.latestHealth?.notes && (
+                          <p>
+                            <span className="font-medium text-slate-600">Notes:</span>{' '}
+                            <span className="text-slate-800">
+                              {studentInfo.latestHealth.notes}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                      <p className="mt-3 text-xs text-slate-500">
+                        For any medical updates or hospital visits, please inform the Gurukul staff so records can be updated.
+                      </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -447,7 +497,25 @@ const ParentDashboard = () => {
                                 {getStatusBadge(req.status)}
                               </div>
                               <p className="text-sm text-slate-600 mb-1">{new Date(req.startDate).toLocaleDateString()} - {new Date(req.endDate).toLocaleDateString()}</p>
-                              <p className="text-sm text-slate-500">{req.reason}</p>
+                              <p className="text-sm text-slate-500 mb-3">{req.reason}</p>
+                              {req.status === 'approved' && req.qrPass?.qrData && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedQR({
+                                      type: 'leave',
+                                      requestId: req.requestId,
+                                      qrData: req.qrPass.qrData,
+                                      validUntil: req.qrPass.validUntil,
+                                      isUsed: req.qrPass.isUsed
+                                    });
+                                    setShowQRModal(true);
+                                  }}
+                                  className="w-full px-4 py-2 bg-violet-600 text-white rounded-lg font-semibold hover:bg-violet-700 transition-colors flex items-center justify-center gap-2"
+                                >
+                                  <span>📱</span>
+                                  <span>Show QR Pass</span>
+                                </button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -465,9 +533,28 @@ const ParentDashboard = () => {
                                 <span className="font-medium text-slate-800">{req.visitType}</span>
                                 {getStatusBadge(req.status)}
                               </div>
-                              <p className="text-sm text-slate-600 mb-1">{new Date(req.preferredDate).toLocaleDateString()}</p>
-                              <p className="text-sm text-slate-600 mb-1">{req.preferredStartTime} - {req.preferredEndTime}</p>
-                              <p className="text-sm text-slate-500">{req.purpose}</p>
+                              <p className="text-sm text-slate-600 mb-1">{new Date(req.preferredDate || req.approvedDate).toLocaleDateString()}</p>
+                              <p className="text-sm text-slate-600 mb-1">{(req.approvedStartTime || req.preferredStartTime)} - {(req.approvedEndTime || req.preferredEndTime)}</p>
+                              <p className="text-sm text-slate-500 mb-3">{req.purpose}</p>
+                              {req.status === 'approved' && req.qrPass?.qrData && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedQR({
+                                      type: 'visit',
+                                      requestId: req.requestId,
+                                      qrData: req.qrPass.qrData,
+                                      validUntil: req.qrPass.validUntil,
+                                      entryTime: req.qrPass.entryTime,
+                                      exitTime: req.qrPass.exitTime
+                                    });
+                                    setShowQRModal(true);
+                                  }}
+                                  className="w-full px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
+                                >
+                                  <span>📱</span>
+                                  <span>Show QR Pass</span>
+                                </button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -701,6 +788,90 @@ const ParentDashboard = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Modal */}
+      {showQRModal && selectedQR && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-slate-800">
+                {selectedQR.type === 'leave' ? 'Leave Pass' : 'Visit Pass'}
+              </h2>
+              <button 
+                onClick={() => setShowQRModal(false)} 
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="text-center mb-4">
+              <p className="text-sm text-slate-600 mb-2">Request ID: {selectedQR.requestId}</p>
+              <div className="flex justify-center bg-white p-4 rounded-xl border-2 border-slate-200 mb-4">
+                {selectedQR.qrData && (
+                  <QRCodeSVG 
+                    value={selectedQR.qrData} 
+                    size={256}
+                    level="M"
+                    includeMargin={true}
+                  />
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mb-2">
+                Show this QR code to security at the gate
+              </p>
+              {selectedQR.validUntil && (
+                <p className="text-xs text-slate-500">
+                  Valid until: {new Date(selectedQR.validUntil).toLocaleString()}
+                </p>
+              )}
+              {selectedQR.type === 'visit' && (
+                <div className="mt-3 space-y-1">
+                  {selectedQR.entryTime && (
+                    <p className="text-xs text-emerald-600">
+                      ✓ Entered: {new Date(selectedQR.entryTime).toLocaleString()}
+                    </p>
+                  )}
+                  {selectedQR.exitTime && (
+                    <p className="text-xs text-amber-600">
+                      ✓ Exited: {new Date(selectedQR.exitTime).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              )}
+              {selectedQR.isUsed && selectedQR.type === 'leave' && (
+                <p className="text-xs text-amber-600 mt-2">
+                  This pass has been used
+                </p>
+              )}
+            </div>
+            
+            <div className="bg-slate-50 rounded-xl p-4 mb-4">
+              <p className="text-sm font-semibold text-slate-700 mb-2">Instructions:</p>
+              <ul className="text-xs text-slate-600 space-y-1 list-disc list-inside">
+                <li>Show this QR code to security personnel</li>
+                <li>Security will scan the code to verify your pass</li>
+                {selectedQR.type === 'visit' && (
+                  <>
+                    <li>QR code will be scanned at entry and exit</li>
+                    <li>Keep this pass accessible during your visit</li>
+                  </>
+                )}
+                {selectedQR.type === 'leave' && (
+                  <li>This pass is valid for the leave duration</li>
+                )}
+              </ul>
+            </div>
+            
+            <button
+              onClick={() => setShowQRModal(false)}
+              className="w-full px-6 py-3 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

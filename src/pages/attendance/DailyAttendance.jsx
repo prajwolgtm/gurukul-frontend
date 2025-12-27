@@ -1,8 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Container, Row, Col, Card, Button, Form, Table, 
-  Modal, Badge, Alert, Spinner, ButtonGroup, InputGroup 
-} from 'react-bootstrap';
 import { useAuth } from '../../store/auth';
 import { ROLES } from '../../utils/roles';
 import api from '../../api/client';
@@ -42,7 +38,6 @@ const DailyAttendance = () => {
     setLoading(true);
     setError('');
     try {
-      // Get daily attendance for the selected date
       const response = await api.get(`/attendance/daily/${selectedDate}`);
       if (response.data.success) {
         setAttendanceData(response.data.data);
@@ -50,14 +45,12 @@ const DailyAttendance = () => {
         const loadedSessions = response.data.data.sessions || [];
         setSessions(loadedSessions);
         
-        // Initialize session statuses
         const statuses = {};
         loadedSessions.forEach(session => {
-          statuses[session.key] = 'Present'; // Default to Present for bulk marking
+          statuses[session.key] = 'Present';
         });
         setSessionStatuses(statuses);
         
-        // If no sessions loaded, show warning
         if (loadedSessions.length === 0) {
           setError('No attendance sessions found. Sessions will be initialized automatically on next load.');
         }
@@ -89,7 +82,7 @@ const DailyAttendance = () => {
       if (response.data.success) {
         setSuccess('Daily attendance initialized successfully!');
         setShowInitializeModal(false);
-        await loadAttendanceData(); // Reload data
+        await loadAttendanceData();
       } else {
         setError(response.data.message || 'Failed to initialize attendance');
       }
@@ -110,6 +103,13 @@ const DailyAttendance = () => {
     setLoading(true);
     setError('');
     try {
+      console.log('📋 Bulk marking session:', {
+        date: selectedDate,
+        sessionKey: bulkMarkData.sessionKey,
+        status: bulkMarkData.status,
+        notes: bulkMarkData.notes
+      });
+      
       const response = await api.post('/attendance/bulk-mark-session', {
         date: selectedDate,
         sessionKey: bulkMarkData.sessionKey,
@@ -117,16 +117,24 @@ const DailyAttendance = () => {
         notes: bulkMarkData.notes
       });
       
+      console.log('✅ Bulk mark response:', response.data);
+      
       if (response.data.success) {
         setSuccess(`Successfully marked ${bulkMarkData.status} for all students in ${bulkMarkData.sessionKey}`);
         setShowBulkMarkModal(false);
-        await loadAttendanceData(); // Reload data
+        setBulkMarkData({
+          sessionKey: '',
+          status: 'Present',
+          notes: ''
+        });
+        await loadAttendanceData();
       } else {
         setError(response.data.message || 'Failed to mark session attendance');
       }
     } catch (error) {
       console.error('Error marking session attendance:', error);
-      setError('Failed to mark session attendance. Please try again.');
+      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Failed to mark session attendance. Please try again.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -145,7 +153,7 @@ const DailyAttendance = () => {
       
       if (response.data.success) {
         setSuccess(`Attendance marked successfully!`);
-        await loadAttendanceData(); // Reload data
+        await loadAttendanceData();
       } else {
         setError(response.data.message || 'Failed to mark individual session');
       }
@@ -158,7 +166,6 @@ const DailyAttendance = () => {
   const handleOpenStudentModal = (student) => {
     setSelectedStudent(student);
     
-    // Initialize form with current attendance data
     const formData = {};
     sessions.forEach(session => {
       const sessionData = student.sessions?.[session.key];
@@ -173,9 +180,6 @@ const DailyAttendance = () => {
   };
 
   const getStudentId = (student) => {
-    // Prioritize student document ID (for marking attendance)
-    // student.student._id is the actual student document ID
-    // student._id is the attendance record ID (if exists)
     return student.student?._id || student.student || student._id;
   };
 
@@ -196,7 +200,6 @@ const DailyAttendance = () => {
       setLoading(true);
       setError('');
       
-      // Mark all sessions for this student
       const studentId = getStudentId(selectedStudent);
       const promises = Object.entries(studentAttendanceForm).map(([sessionKey, data]) => 
         api.post('/attendance/mark-session', {
@@ -221,173 +224,137 @@ const DailyAttendance = () => {
     }
   };
 
-  const getStatusBadge = (status) => {
-    const variants = {
-      'Present': 'success',
-      'Absent': 'danger',
-      'Sick': 'warning',
-      'Leave': 'info'
+  const getStatusColor = (status) => {
+    const colors = {
+      'Present': 'bg-emerald-100 text-emerald-700 border-emerald-300',
+      'Absent': 'bg-rose-100 text-rose-700 border-rose-300',
+      'Sick': 'bg-amber-100 text-amber-700 border-amber-300',
+      'Leave': 'bg-sky-100 text-sky-700 border-sky-300'
     };
-    return <Badge bg={variants[status] || 'secondary'}>{status}</Badge>;
+    return colors[status] || 'bg-slate-100 text-slate-700 border-slate-300';
   };
 
   const canManageAttendance = user?.role === ROLES.ADMIN || user?.role === ROLES.PRINCIPAL || user?.role === ROLES.CARETAKER;
 
-  if (loading) {
+  if (loading && !attendanceData) {
     return (
-      <div className="text-center p-5">
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </Spinner>
+      <div className="flex justify-center items-center py-16">
+        <div className="w-10 h-10 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <Container>
-      <Row className="mb-4">
-        <Col>
-          <h2>Daily Hostel Attendance</h2>
-          <p className="text-muted">Manage 14 daily attendance sessions for all students</p>
-        </Col>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">Daily Hostel Attendance</h1>
+          <p className="text-slate-500 mt-1">Manage 14 daily attendance sessions for all students</p>
+        </div>
         {canManageAttendance && (
-          <Col xs="auto">
-            <Button 
-              variant="primary" 
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
               onClick={() => setShowInitializeModal(true)}
               disabled={attendanceData !== null}
+              className="px-5 py-3 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-violet-200"
             >
               Initialize Daily Attendance
-            </Button>
-            <Button 
-              variant="success" 
+            </button>
+            <button
               onClick={() => setShowBulkMarkModal(true)}
               disabled={!attendanceData}
-              className="ms-2"
+              className="px-5 py-3 bg-emerald-500 text-white rounded-xl font-semibold hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-200"
             >
               Bulk Mark Session
-            </Button>
-          </Col>
+            </button>
+          </div>
         )}
-      </Row>
+      </div>
 
+      {/* Alerts */}
       {error && (
-        <Alert variant="danger" onClose={() => setError('')} dismissible>
-          {error}
-        </Alert>
+        <div className="bg-rose-100 border-l-4 border-rose-500 text-rose-800 p-4 rounded-xl font-medium flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="text-rose-600 hover:text-rose-800 text-xl">×</button>
+        </div>
       )}
 
       {success && (
-        <Alert variant="success" onClose={() => setSuccess('')} dismissible>
-          {success}
-        </Alert>
+        <div className="bg-emerald-100 border-l-4 border-emerald-500 text-emerald-800 p-4 rounded-xl font-medium flex items-center justify-between">
+          <span>{success}</span>
+          <button onClick={() => setSuccess('')} className="text-emerald-600 hover:text-emerald-800 text-xl">×</button>
+        </div>
       )}
 
       {/* Date Selection Card */}
-      <Card className="mb-4 border-primary">
-        <Card.Header className="bg-primary text-white">
-          <h5 className="mb-0">📅 Select Attendance Date</h5>
-        </Card.Header>
-        <Card.Body>
-          <Row className="align-items-center">
-            <Col md={4}>
-              <Form.Group>
-                <Form.Label><strong>Select Date</strong></Form.Label>
-                <Form.Control
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-4">
+          <h3 className="text-white font-semibold text-lg">📅 Select Attendance Date</h3>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Select Date</label>
+              <input
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
                   max={new Date().toISOString().split('T')[0]}
-                  className="form-control-lg"
-                />
-                <Form.Text className="text-muted">
-                  Choose the date for attendance period (14 sessions)
-                </Form.Text>
-              </Form.Group>
-            </Col>
-            <Col md={8}>
+                className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base"
+              />
+              <p className="text-sm text-slate-500 mt-2">Choose the date for attendance period (14 sessions)</p>
+            </div>
+            <div className="flex flex-wrap gap-3 items-center">
               {attendanceData ? (
-                <div className="d-flex gap-3 align-items-center">
-                  <div>
-                    <Badge bg="success" className="p-2 fs-6">
+                <>
+                  <div className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-xl font-semibold">
                       👥 {attendanceData.totalStudents || students.length} Students
-                    </Badge>
                   </div>
-                  <div>
-                    <Badge bg="info" className="p-2 fs-6">
+                  <div className="px-4 py-2 bg-sky-100 text-sky-700 rounded-xl font-semibold">
                       📋 {sessions.length} Sessions
-                    </Badge>
                   </div>
-                  <div>
-                    <Badge bg="primary" className="p-2 fs-6">
+                  <div className="px-4 py-2 bg-violet-100 text-violet-700 rounded-xl font-semibold">
                       📅 {new Date(selectedDate).toLocaleDateString('en-US', { 
                         weekday: 'long', 
                         year: 'numeric', 
                         month: 'long', 
                         day: 'numeric' 
                       })}
-                    </Badge>
                   </div>
-                </div>
+                </>
               ) : (
-                <Alert variant="warning" className="mb-0">
-                  <strong>⚠️ No attendance data for this date.</strong>
+                <div className="w-full bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-4 rounded-xl">
+                  <p className="font-semibold mb-2">⚠️ No attendance data for this date.</p>
                   {canManageAttendance && (
-                    <div className="mt-2">
-                      <Button 
-                        variant="primary" 
-                        size="sm"
+                    <button
                         onClick={() => setShowInitializeModal(true)}
+                      className="px-4 py-2 bg-amber-500 text-white rounded-lg font-semibold hover:bg-amber-600 transition-colors text-sm"
                       >
                         Initialize Attendance for This Date
-                      </Button>
+                    </button>
+                  )}
                     </div>
                   )}
-                </Alert>
-              )}
-            </Col>
-          </Row>
-        </Card.Body>
-      </Card>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      {/* Sessions Info Card with Selection */}
-      {sessions.length > 0 ? (
-        <Card className="mb-4 border-info">
-          <Card.Header className="bg-info text-white">
-            <Row className="align-items-center">
-              <Col>
-                <h6 className="mb-0">📋 Select Session to Mark Attendance</h6>
-                <small>Choose a session and mark attendance for all students</small>
-              </Col>
-              {canManageAttendance && (
-                <Col xs="auto">
-                  <Button 
-                    variant="light" 
-                    size="sm"
-                    onClick={() => {
-                      if (selectedSession) {
-                        setShowSessionMarkingModal(true);
-                      } else {
-                        setError('Please select a session first');
-                      }
-                    }}
-                    disabled={!selectedSession}
-                  >
-                    📝 Mark Selected Session
-                  </Button>
-                </Col>
-              )}
-            </Row>
-          </Card.Header>
-          <Card.Body>
-            <Row>
-              <Col md={12} className="mb-3">
-                <Form.Group>
-                  <Form.Label><strong>Select Session:</strong></Form.Label>
-                  <Form.Select
+      {/* Sessions Selection */}
+      {sessions.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-4">
+            <h3 className="text-white font-semibold text-lg">📋 Select Session to Mark Attendance</h3>
+            <p className="text-sky-100 text-sm mt-1">Choose a session and mark attendance for all students</p>
+          </div>
+          <div className="p-6">
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Select Session:</label>
+              <select
                     value={selectedSession}
                     onChange={(e) => setSelectedSession(e.target.value)}
-                    size="lg"
+                className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-100 text-base bg-white"
                   >
                     <option value="">-- Choose a session to mark attendance --</option>
                     {sessions.map((session, index) => (
@@ -395,571 +362,543 @@ const DailyAttendance = () => {
                         {index + 1}. {session.time} - {session.name}
                       </option>
                     ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
+              </select>
+            </div>
             {selectedSession && (
-              <Alert variant="info" className="mb-0">
-                <strong>Selected:</strong> {
-                  sessions.find(s => s.key === selectedSession)?.time
-                } - {
-                  sessions.find(s => s.key === selectedSession)?.name
-                }
-                <br />
-                <small>Click "Mark Selected Session" button above to mark attendance for all students</small>
-              </Alert>
+              <div className="bg-sky-50 border-l-4 border-sky-500 text-sky-800 p-4 rounded-xl mb-4">
+                <p className="font-semibold">
+                  Selected: {sessions.find(s => s.key === selectedSession)?.time} - {sessions.find(s => s.key === selectedSession)?.name}
+                </p>
+                {canManageAttendance && (
+                  <button
+                    onClick={() => setShowSessionMarkingModal(true)}
+                    className="mt-3 px-4 py-2 bg-sky-500 text-white rounded-lg font-semibold hover:bg-sky-600 transition-colors text-sm"
+                  >
+                    📝 Mark Selected Session
+                  </button>
+                )}
+              </div>
             )}
-            <hr />
-            <div className="d-flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               {sessions.map((session, index) => (
-                <Badge 
+                <button
                   key={session.key} 
-                  bg={selectedSession === session.key ? 'primary' : 'secondary'}
-                  className="p-2"
-                  style={{ fontSize: '0.85rem', cursor: 'pointer' }}
                   onClick={() => setSelectedSession(session.key)}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                    selectedSession === session.key
+                      ? 'bg-sky-500 text-white shadow-lg'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
                 >
                   {index + 1}. {session.time} - {session.name}
-                </Badge>
+                </button>
               ))}
             </div>
-          </Card.Body>
-        </Card>
-      ) : attendanceData && (
-        <Card className="mb-4 border-warning">
-          <Card.Header className="bg-warning text-dark">
-            <h6 className="mb-0">⚠️ Sessions Not Loaded</h6>
-          </Card.Header>
-          <Card.Body>
-            <Alert variant="warning">
-              <p><strong>No attendance sessions found.</strong></p>
-              <p>Sessions are being initialized automatically. Please refresh the page in a moment.</p>
-              <Button 
-                variant="primary" 
-                onClick={loadAttendanceData}
-                className="mt-2"
-              >
-                🔄 Refresh Page
-              </Button>
-            </Alert>
-          </Card.Body>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* Students List with Session Attendance */}
+      {/* Students List - Mobile Card View */}
       {attendanceData && students.length > 0 && sessions.length > 0 && (
-        <Card>
-          <Card.Header className="bg-light">
-            <Row className="align-items-center">
-              <Col>
-                <h5 className="mb-0">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
+            <h3 className="font-semibold text-slate-800 text-lg">
                   👥 Students Attendance - {new Date(selectedDate).toLocaleDateString()}
-                </h5>
-                <small className="text-muted">
-                  Mark attendance for each session. Click on P/A/S/L buttons or use "Mark/Update" for full details.
-                </small>
-              </Col>
-              {canManageAttendance && (
-                <Col xs="auto">
-                  <Button 
-                    variant="success" 
-                    size="sm"
-                    onClick={() => setShowBulkMarkModal(true)}
-                    className="me-2"
-                  >
-                    📋 Bulk Mark Session
-                  </Button>
-                </Col>
-              )}
-            </Row>
-          </Card.Header>
-          <Card.Body>
-            <div className="table-responsive" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-              <Table striped bordered hover size="sm" className="mb-0">
-                <thead className="table-light sticky-top" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
-                  <tr>
-                    <th style={{ width: '3%' }} className="text-center">#</th>
-                    <th style={{ width: '15%' }}>Student Name</th>
-                    <th style={{ width: '10%' }}>Admission No</th>
+            </h3>
+            <p className="text-sm text-slate-500 mt-1">Click on student card to view/edit all sessions</p>
+          </div>
+          <div className="p-4 sm:p-6">
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b-2 border-slate-200">
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">#</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Student</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Admission No</th>
                     {sessions.map((session, index) => (
-                      <th key={session.key} className="text-center" style={{ width: '5%', fontSize: '0.75rem' }}>
-                        <div className="d-flex flex-column align-items-center">
-                          <small className="text-muted">{index + 1}</small>
-                          <small className="text-muted">{session.time}</small>
-                          <div style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>{session.name}</div>
+                      <th key={session.key} className="px-2 py-3 text-center text-xs font-bold text-slate-500 uppercase min-w-[60px]">
+                        <div className="flex flex-col items-center">
+                          <span className="text-xs text-slate-400">{index + 1}</span>
+                          <span className="text-xs">{session.time}</span>
+                          <span className="text-xs font-semibold">{session.name}</span>
                         </div>
                       </th>
                     ))}
-                    <th style={{ width: '8%' }} className="text-center">Overall</th>
-                    <th style={{ width: '8%' }} className="text-center">Actions</th>
+                    <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase">Overall</th>
+                    <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100">
                   {students.map((student, index) => {
                     const presentCount = student.statistics?.presentCount || 0;
                     const totalSessions = student.statistics?.totalSessions || 14;
                     const percentage = student.statistics?.attendancePercentage || 0;
-                    const studentId = getStudentId(student);
-                    const rowKey = student.student?._id || student._id || `student-${index}`;
                     
                     return (
-                      <tr key={rowKey}>
-                        <td className="text-center">{index + 1}</td>
-                        <td>
-                          <strong>{student.student?.fullName || 'Unknown'}</strong>
+                      <tr key={student.student?._id || student._id || index} className="hover:bg-violet-50 transition-colors">
+                        <td className="px-4 py-4 text-sm text-slate-600">{index + 1}</td>
+                        <td className="px-4 py-4">
+                          <div className="font-semibold text-slate-800">{student.student?.fullName || 'Unknown'}</div>
                         </td>
-                        <td>
-                          <Badge bg="primary">{student.student?.admissionNo || 'N/A'}</Badge>
+                        <td className="px-4 py-4">
+                          <span className="px-2 py-1 bg-violet-100 text-violet-700 rounded-full text-xs font-semibold">
+                            {student.student?.admissionNo || 'N/A'}
+                          </span>
                         </td>
                         {sessions.map(session => {
                           const sessionData = student.sessions?.[session.key];
                           const status = sessionData?.status || 'Present';
                           
                           return (
-                            <td key={session.key} className="text-center">
+                            <td key={session.key} className="px-2 py-4 text-center">
                               {canManageAttendance ? (
-                                <ButtonGroup size="sm" vertical>
-                                  <Button
-                                    variant={status === 'Present' ? 'success' : 'outline-success'}
-                                    size="sm"
+                                <div className="flex flex-col gap-1">
+                                  <button
                                     onClick={() => markIndividualSession(student, session.key, 'Present')}
-                                    title="Mark Present"
-                                    style={{ fontSize: '0.7rem', padding: '2px 4px' }}
+                                    className={`px-2 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[32px] ${
+                                      status === 'Present' ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                    }`}
                                   >
                                     P
-                                  </Button>
-                                  <Button
-                                    variant={status === 'Absent' ? 'danger' : 'outline-danger'}
-                                    size="sm"
+                                  </button>
+                                  <button
                                     onClick={() => markIndividualSession(student, session.key, 'Absent')}
-                                    title="Mark Absent"
-                                    style={{ fontSize: '0.7rem', padding: '2px 4px' }}
+                                    className={`px-2 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[32px] ${
+                                      status === 'Absent' ? 'bg-rose-500 text-white' : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+                                    }`}
                                   >
                                     A
-                                  </Button>
-                                  <Button
-                                    variant={status === 'Sick' ? 'warning' : 'outline-warning'}
-                                    size="sm"
+                                  </button>
+                                  <button
                                     onClick={() => markIndividualSession(student, session.key, 'Sick')}
-                                    title="Mark Sick"
-                                    style={{ fontSize: '0.7rem', padding: '2px 4px' }}
+                                    className={`px-2 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[32px] ${
+                                      status === 'Sick' ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                                    }`}
                                   >
                                     S
-                                  </Button>
-                                  <Button
-                                    variant={status === 'Leave' ? 'info' : 'outline-info'}
-                                    size="sm"
+                                  </button>
+                                  <button
                                     onClick={() => markIndividualSession(student, session.key, 'Leave')}
-                                    title="Mark Leave"
-                                    style={{ fontSize: '0.7rem', padding: '2px 4px' }}
+                                    className={`px-2 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[32px] ${
+                                      status === 'Leave' ? 'bg-sky-500 text-white' : 'bg-sky-50 text-sky-700 hover:bg-sky-100'
+                                    }`}
                                   >
                                     L
-                                  </Button>
-                                </ButtonGroup>
+                                  </button>
+                                </div>
                               ) : (
-                                <Badge bg={
-                                  status === 'Present' ? 'success' :
-                                  status === 'Absent' ? 'danger' :
-                                  status === 'Sick' ? 'warning' : 'info'
-                                }>
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(status)}`}>
                                   {status.charAt(0)}
-                                </Badge>
+                                </span>
                               )}
                             </td>
                           );
                         })}
-                        <td className="text-center">
-                          <Badge 
-                            bg={
-                              student.overallStatus === 'Excellent' ? 'success' : 
-                              student.overallStatus === 'Good' ? 'info' :
-                              student.overallStatus === 'Average' ? 'warning' :
-                              student.overallStatus === 'Poor' ? 'danger' : 
-                              'secondary'
-                            }
-                          >
+                        <td className="px-4 py-4 text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              percentage >= 90 ? 'bg-emerald-100 text-emerald-700' :
+                              percentage >= 75 ? 'bg-sky-100 text-sky-700' :
+                              percentage >= 60 ? 'bg-amber-100 text-amber-700' :
+                              'bg-rose-100 text-rose-700'
+                            }`}>
                             {percentage}%
-                          </Badge>
-                          <br />
-                          <small className="text-muted">
-                            {presentCount}/{totalSessions}
-                          </small>
+                            </span>
+                            <span className="text-xs text-slate-500">{presentCount}/{totalSessions}</span>
+                          </div>
                         </td>
-                        <td className="text-center">
-                          {canManageAttendance ? (
-                            <Button 
-                              variant="primary" 
-                              size="sm"
+                        <td className="px-4 py-4 text-center">
+                          <button
                               onClick={() => handleOpenStudentModal(student)}
-                              title="Edit all sessions"
-                            >
-                              ✏️
-                            </Button>
-                          ) : (
-                            <Button 
-                              variant="outline-info" 
-                              size="sm"
-                              onClick={() => handleOpenStudentModal(student)}
-                            >
-                              👁️
-                            </Button>
-                          )}
+                            className="px-4 py-2 bg-violet-600 text-white rounded-lg font-semibold hover:bg-violet-700 transition-colors text-sm"
+                          >
+                            {canManageAttendance ? '✏️ Edit' : '👁️ View'}
+                          </button>
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
-              </Table>
+              </table>
             </div>
-          </Card.Body>
-        </Card>
+
+            {/* Mobile Card View */}
+            <div className="lg:hidden space-y-4">
+              {students.map((student, index) => {
+                const presentCount = student.statistics?.presentCount || 0;
+                const totalSessions = student.statistics?.totalSessions || 14;
+                const percentage = student.statistics?.attendancePercentage || 0;
+                
+                return (
+                  <div key={student.student?._id || student._id || index} className="bg-white border-2 border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h4 className="font-semibold text-slate-800">{student.student?.fullName || 'Unknown'}</h4>
+                        <span className="px-2 py-1 bg-violet-100 text-violet-700 rounded-full text-xs font-semibold mt-1 inline-block">
+                          {student.student?.admissionNo || 'N/A'}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold block mb-1 ${
+                          percentage >= 90 ? 'bg-emerald-100 text-emerald-700' :
+                          percentage >= 75 ? 'bg-sky-100 text-sky-700' :
+                          percentage >= 60 ? 'bg-amber-100 text-amber-700' :
+                          'bg-rose-100 text-rose-700'
+                        }`}>
+                          {percentage}%
+                        </span>
+                        <span className="text-xs text-slate-500">{presentCount}/{totalSessions}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+                      {sessions.slice(0, 6).map(session => {
+                        const sessionData = student.sessions?.[session.key];
+                        const status = sessionData?.status || 'Present';
+                        return (
+                          <div key={session.key} className="text-center">
+                            <div className="text-xs text-slate-500 mb-1">{session.time}</div>
+                            {canManageAttendance ? (
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => markIndividualSession(student, session.key, 'Present')}
+                                  className={`flex-1 px-2 py-2 rounded-lg text-xs font-semibold min-h-[36px] ${
+                                    status === 'Present' ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-700'
+                                  }`}
+                                >
+                                  P
+                                </button>
+                                <button
+                                  onClick={() => markIndividualSession(student, session.key, 'Absent')}
+                                  className={`flex-1 px-2 py-2 rounded-lg text-xs font-semibold min-h-[36px] ${
+                                    status === 'Absent' ? 'bg-rose-500 text-white' : 'bg-rose-50 text-rose-700'
+                                  }`}
+                                >
+                                  A
+                                </button>
+                              </div>
+                            ) : (
+                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(status)}`}>
+                                {status.charAt(0)}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    <button
+                      onClick={() => handleOpenStudentModal(student)}
+                      className="w-full px-4 py-3 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors"
+                    >
+                      {canManageAttendance ? '✏️ Edit All Sessions' : '👁️ View All Sessions'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* No Students Message */}
+      {/* No Data Messages */}
       {attendanceData && students.length === 0 && (
-        <Card>
-          <Card.Body className="text-center py-5">
-            <Alert variant="info">
-              <h5>No students found for this date</h5>
-              <p>Please initialize attendance for this date first.</p>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+          <div className="bg-sky-100 border-l-4 border-sky-500 text-sky-800 p-4 rounded-xl">
+            <h5 className="font-semibold mb-2">No students found for this date</h5>
+            <p className="text-sm mb-4">Please initialize attendance for this date first.</p>
               {canManageAttendance && (
-                <Button 
-                  variant="primary" 
-                  className="mt-3"
+              <button
                   onClick={() => setShowInitializeModal(true)}
+                className="px-5 py-2.5 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors"
                 >
                   Initialize Attendance
-                </Button>
+              </button>
               )}
-            </Alert>
-          </Card.Body>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* No Attendance Data Message */}
       {!attendanceData && !loading && (
-        <Card>
-          <Card.Body className="text-center py-5">
-            <Alert variant="warning">
-              <h5>No attendance data for {new Date(selectedDate).toLocaleDateString()}</h5>
-              <p>Please initialize attendance for this date to start marking.</p>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+          <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-4 rounded-xl">
+            <h5 className="font-semibold mb-2">No attendance data for {new Date(selectedDate).toLocaleDateString()}</h5>
+            <p className="text-sm mb-4">Please initialize attendance for this date to start marking.</p>
               {canManageAttendance && (
-                <Button 
-                  variant="primary" 
-                  className="mt-3"
+              <button
                   onClick={() => setShowInitializeModal(true)}
+                className="px-5 py-2.5 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors"
                 >
                   Initialize Attendance for This Date
-                </Button>
-              )}
-            </Alert>
-          </Card.Body>
-        </Card>
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
-      {/* Initialize Daily Attendance Modal */}
-      <Modal show={showInitializeModal} onHide={() => setShowInitializeModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Initialize Daily Attendance</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
+      {/* Initialize Modal */}
+      {showInitializeModal && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-800">Initialize Daily Attendance</h2>
+              <button onClick={() => setShowInitializeModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500">×</button>
+            </div>
+            <div className="p-6 space-y-4">
           <p>This will create attendance records for all active students for <strong>{selectedDate}</strong>.</p>
           <p>All sessions will be marked as "Absent" initially and can be updated later.</p>
-          <Alert variant="info">
-            <strong>Note:</strong> This action cannot be undone. If attendance already exists for this date, it will not be overwritten.
-          </Alert>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowInitializeModal(false)}>
+              <div className="bg-sky-100 border-l-4 border-sky-500 text-sky-800 p-4 rounded-xl">
+                <p className="text-sm font-semibold">Note: This action cannot be undone. If attendance already exists for this date, it will not be overwritten.</p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 p-6 border-t border-slate-200">
+              <button
+                onClick={() => setShowInitializeModal(false)}
+                className="flex-1 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-300 transition-colors"
+              >
             Cancel
-          </Button>
-          <Button variant="primary" onClick={initializeDailyAttendance}>
+              </button>
+              <button
+                onClick={initializeDailyAttendance}
+                className="flex-1 px-6 py-3 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200"
+              >
             Initialize Attendance
-          </Button>
-        </Modal.Footer>
-      </Modal>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Student Attendance Modal - Edit Form */}
-      <Modal show={showStudentModal} onHide={() => setShowStudentModal(false)} size="xl">
-        <Modal.Header closeButton className="bg-primary text-white">
-          <Modal.Title>
+      {/* Student Modal - Edit All Sessions */}
+      {showStudentModal && selectedStudent && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-white font-bold text-lg">
             📝 Mark/Update Attendance - {selectedStudent?.student?.fullName || 'Student'}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-          {selectedStudent && (
-            <>
-              <Card className="mb-3 border-info">
-                <Card.Body>
-                  <Row>
-                    <Col md={6}>
+              </h2>
+              <button onClick={() => setShowStudentModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 text-white">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-50 rounded-xl p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                       <div>
-                        <strong>📅 Date:</strong>{' '}
-                        {new Date(selectedDate).toLocaleDateString('en-US', { 
+                    <span className="font-semibold text-slate-600">📅 Date:</span>{' '}
+                    <span className="text-slate-800">{new Date(selectedDate).toLocaleDateString('en-US', { 
                           weekday: 'long', 
                           year: 'numeric', 
                           month: 'long', 
                           day: 'numeric' 
-                        })}
+                    })}</span>
                       </div>
-                    </Col>
-                    <Col md={6}>
                       <div>
-                        <strong>🎓 Admission No:</strong>{' '}
-                        <Badge bg="primary">{selectedStudent.student?.admissionNo || 'N/A'}</Badge>
+                    <span className="font-semibold text-slate-600">🎓 Admission No:</span>{' '}
+                    <span className="px-2 py-1 bg-violet-100 text-violet-700 rounded-full text-xs font-semibold">
+                      {selectedStudent.student?.admissionNo || 'N/A'}
+                    </span>
                       </div>
-                    </Col>
-                  </Row>
-                </Card.Body>
-              </Card>
+                </div>
+              </div>
 
-              <Alert variant="info" className="mb-3">
-                <strong>ℹ️ Instructions:</strong> Select status for each of the 14 daily sessions. 
-                You can add optional notes for any session. Click "Save Attendance" when done.
-              </Alert>
+              <div className="bg-sky-50 border-l-4 border-sky-500 text-sky-800 p-4 rounded-xl">
+                <p className="text-sm font-semibold">ℹ️ Instructions: Select status for each of the 14 daily sessions. You can add optional notes for any session.</p>
+              </div>
 
-              <h6 className="mb-3">
-                <strong>14 Daily Sessions:</strong>
-              </h6>
-              <div className="table-responsive">
-                <Table striped bordered hover size="sm" className="mb-0">
-                  <thead className="table-light">
-                    <tr>
-                      <th style={{ width: '5%' }} className="text-center">#</th>
-                      <th style={{ width: '15%' }}>Time</th>
-                      <th style={{ width: '25%' }}>Session Name</th>
-                      <th style={{ width: '25%' }}>Status</th>
-                      <th style={{ width: '30%' }}>Notes (Optional)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="space-y-3">
                     {sessions.map((session, index) => {
                       const formData = studentAttendanceForm[session.key] || { status: 'Present', notes: '' };
                       const currentStatus = selectedStudent.sessions?.[session.key]?.status || 'Present';
                       
                       return (
-                        <tr key={session.key}>
-                          <td className="text-center">
-                            <Badge bg="secondary">{index + 1}</Badge>
-                          </td>
-                          <td>
-                            <small className="text-muted">
-                              <strong>{session.time}</strong>
-                            </small>
-                          </td>
-                          <td>
-                            <strong>{session.name}</strong>
-                          </td>
-                          <td>
-                            <Form.Select
-                              size="sm"
+                    <div key={session.key} className="bg-white border-2 border-slate-200 rounded-xl p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-semibold">{index + 1}</span>
+                            <span className="font-semibold text-slate-800">{session.name}</span>
+                          </div>
+                          <span className="text-sm text-slate-500">{session.time}</span>
+                        </div>
+                        <select
                               value={formData.status}
                               onChange={(e) => handleStudentFormChange(session.key, 'status', e.target.value)}
                               disabled={!canManageAttendance}
-                              className={
-                                formData.status === 'Present' ? 'border-success' :
-                                formData.status === 'Absent' ? 'border-danger' :
-                                formData.status === 'Sick' ? 'border-warning' :
-                                'border-info'
-                              }
+                          className={`px-4 py-2 rounded-xl border-2 font-semibold text-sm ${
+                            formData.status === 'Present' ? 'border-emerald-300 bg-emerald-50 text-emerald-700' :
+                            formData.status === 'Absent' ? 'border-rose-300 bg-rose-50 text-rose-700' :
+                            formData.status === 'Sick' ? 'border-amber-300 bg-amber-50 text-amber-700' :
+                            'border-sky-300 bg-sky-50 text-sky-700'
+                          } disabled:opacity-50`}
                             >
                               <option value="Present">✅ Present</option>
                               <option value="Absent">❌ Absent</option>
                               <option value="Sick">🤒 Sick</option>
                               <option value="Leave">🏖️ Leave</option>
-                            </Form.Select>
+                        </select>
+                      </div>
                             {currentStatus !== formData.status && (
-                              <small className="text-muted d-block mt-1">
-                                Changed from: {currentStatus}
-                              </small>
+                        <p className="text-xs text-slate-500 mb-2">Changed from: {currentStatus}</p>
                             )}
-                          </td>
-                          <td>
-                            <Form.Control
+                      <input
                               type="text"
-                              size="sm"
                               placeholder="Add notes if needed..."
                               value={formData.notes}
                               onChange={(e) => handleStudentFormChange(session.key, 'notes', e.target.value)}
                               disabled={!canManageAttendance}
+                        className="w-full px-4 py-2 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-sm disabled:opacity-50"
                             />
-                          </td>
-                        </tr>
+                    </div>
                       );
                     })}
-                  </tbody>
-                </Table>
               </div>
 
               {/* Summary */}
-              <Card className="mt-3 border-success">
-                <Card.Body>
-                  <Row>
-                    <Col md={4}>
+              <div className="bg-emerald-50 rounded-xl p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                       <div>
-                        <strong>✅ Present:</strong>{' '}
-                        <Badge bg="success">
+                    <span className="font-semibold text-slate-600">✅ Present:</span>{' '}
+                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold">
                           {Object.values(studentAttendanceForm).filter(f => f.status === 'Present').length}
-                        </Badge>
+                    </span>
                       </div>
-                    </Col>
-                    <Col md={4}>
                       <div>
-                        <strong>❌ Absent:</strong>{' '}
-                        <Badge bg="danger">
+                    <span className="font-semibold text-slate-600">❌ Absent:</span>{' '}
+                    <span className="px-2 py-1 bg-rose-100 text-rose-700 rounded-full text-xs font-semibold">
                           {Object.values(studentAttendanceForm).filter(f => f.status === 'Absent').length}
-                        </Badge>
+                    </span>
                       </div>
-                    </Col>
-                    <Col md={4}>
                       <div>
-                        <strong>📊 Total Sessions:</strong>{' '}
-                        <Badge bg="info">{sessions.length}</Badge>
+                    <span className="font-semibold text-slate-600">📊 Total Sessions:</span>{' '}
+                    <span className="px-2 py-1 bg-sky-100 text-sky-700 rounded-full text-xs font-semibold">
+                      {sessions.length}
+                    </span>
                       </div>
-                    </Col>
-                  </Row>
-                </Card.Body>
-              </Card>
-            </>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowStudentModal(false)}>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 p-6 border-t border-slate-200 bg-slate-50">
+              <button
+                onClick={() => setShowStudentModal(false)}
+                className="flex-1 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-300 transition-colors"
+              >
             ❌ Cancel
-          </Button>
+              </button>
           {canManageAttendance && (
-            <Button 
-              variant="primary" 
+                <button
               onClick={handleSaveStudentAttendance}
               disabled={loading}
-              size="lg"
+                  className="flex-1 px-6 py-3 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 disabled:opacity-50"
             >
               {loading ? (
-                <>
-                  <Spinner size="sm" className="me-2" />
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   Saving...
-                </>
+                    </span>
               ) : (
                 '💾 Save Attendance'
               )}
-            </Button>
-          )}
-        </Modal.Footer>
-      </Modal>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Session Marking Modal - Mark selected session for all students */}
-      <Modal show={showSessionMarkingModal} onHide={() => setShowSessionMarkingModal(false)} size="lg">
-        <Modal.Header closeButton className="bg-primary text-white">
-          <Modal.Title>
-            📝 Mark Session Attendance
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {selectedSession && (
-            <>
-              <Alert variant="info" className="mb-3">
-                <strong>Session:</strong> {
-                  sessions.find(s => s.key === selectedSession)?.time
-                } - {
-                  sessions.find(s => s.key === selectedSession)?.name
-                }
-                <br />
-                <strong>Date:</strong> {new Date(selectedDate).toLocaleDateString('en-US', { 
+      {/* Session Marking Modal */}
+      {showSessionMarkingModal && selectedSession && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-white font-bold text-lg">📝 Mark Session Attendance</h2>
+              <button onClick={() => setShowSessionMarkingModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 text-white">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-sky-50 border-l-4 border-sky-500 text-sky-800 p-4 rounded-xl">
+                <p className="font-semibold mb-1">Session: {sessions.find(s => s.key === selectedSession)?.time} - {sessions.find(s => s.key === selectedSession)?.name}</p>
+                <p className="text-sm">Date: {new Date(selectedDate).toLocaleDateString('en-US', { 
                   weekday: 'long', 
                   year: 'numeric', 
                   month: 'long', 
                   day: 'numeric' 
-                })}
-                <br />
-                <strong>Total Students:</strong> {students.length}
-              </Alert>
+                })}</p>
+                <p className="text-sm">Total Students: {students.length}</p>
+              </div>
 
-              <Form.Group className="mb-3">
-                <Form.Label><strong>Status for All Students:</strong></Form.Label>
-                <Form.Select
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Status for All Students:</label>
+                <select
                   value={sessionMarkingData.status || 'Present'}
                   onChange={(e) => setSessionMarkingData({...sessionMarkingData, status: e.target.value})}
-                  size="lg"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base bg-white"
                 >
                   <option value="Present">✅ Present</option>
                   <option value="Absent">❌ Absent</option>
                   <option value="Sick">🤒 Sick</option>
                   <option value="Leave">🏖️ Leave</option>
-                </Form.Select>
-              </Form.Group>
+                </select>
+              </div>
 
-              <Form.Group className="mb-3">
-                <Form.Label><strong>Notes (Optional):</strong></Form.Label>
-                <Form.Control
-                  as="textarea"
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Notes (Optional):</label>
+                <textarea
                   rows={3}
                   value={sessionMarkingData.notes || ''}
                   onChange={(e) => setSessionMarkingData({...sessionMarkingData, notes: e.target.value})}
                   placeholder="Add notes for this session (applies to all students)..."
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base"
                 />
-              </Form.Group>
+              </div>
 
-              <Alert variant="warning">
-                <strong>⚠️ Warning:</strong> This will mark <strong>{sessionMarkingData.status || 'Present'}</strong> for 
-                all <strong>{students.length} students</strong> in the session: {
-                  sessions.find(s => s.key === selectedSession)?.name
-                }
-              </Alert>
+              <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-4 rounded-xl">
+                <p className="text-sm font-semibold">⚠️ Warning: This will mark <strong>{sessionMarkingData.status || 'Present'}</strong> for all <strong>{students.length} students</strong> in this session.</p>
+              </div>
 
-              <div className="table-responsive mt-3">
-                <Table striped bordered size="sm">
+              <div className="overflow-x-auto">
+                <table className="w-full">
                   <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Student Name</th>
-                      <th>Admission No</th>
-                      <th>Current Status</th>
-                      <th>Will Be Marked As</th>
+                    <tr className="border-b-2 border-slate-200">
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">#</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Student Name</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Current Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Will Be Marked As</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-slate-100">
                     {students.map((student, index) => {
                       const currentStatus = student.sessions?.[selectedSession]?.status || 'Present';
-                      const rowKey = student.student?._id || student._id || `student-${index}`;
                       return (
-                        <tr key={rowKey}>
-                          <td>{index + 1}</td>
-                          <td><strong>{student.student?.fullName || 'Unknown'}</strong></td>
-                          <td><Badge bg="primary">{student.student?.admissionNo || 'N/A'}</Badge></td>
-                          <td>
-                            <Badge bg={
-                              currentStatus === 'Present' ? 'success' :
-                              currentStatus === 'Absent' ? 'danger' :
-                              currentStatus === 'Sick' ? 'warning' : 'info'
-                            }>
-                              {currentStatus}
-                            </Badge>
+                        <tr key={student.student?._id || student._id || index} className="hover:bg-slate-50">
+                          <td className="px-4 py-3 text-sm text-slate-600">{index + 1}</td>
+                          <td className="px-4 py-3">
+                            <div className="font-semibold text-slate-800">{student.student?.fullName || 'Unknown'}</div>
+                            <span className="text-xs text-slate-500">{student.student?.admissionNo || 'N/A'}</span>
                           </td>
-                          <td>
-                            <Badge bg={
-                              sessionMarkingData.status === 'Present' ? 'success' :
-                              sessionMarkingData.status === 'Absent' ? 'danger' :
-                              sessionMarkingData.status === 'Sick' ? 'warning' : 'info'
-                            }>
+                          <td className="px-4 py-3">
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(currentStatus)}`}>
+                              {currentStatus}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(sessionMarkingData.status || 'Present')}`}>
                               {sessionMarkingData.status || 'Present'}
-                            </Badge>
+                            </span>
                           </td>
                         </tr>
                       );
                     })}
                   </tbody>
-                </Table>
+                </table>
               </div>
-            </>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowSessionMarkingModal(false)}>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 p-6 border-t border-slate-200 bg-slate-50">
+              <button
+                onClick={() => setShowSessionMarkingModal(false)}
+                className="flex-1 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-300 transition-colors"
+              >
             Cancel
-          </Button>
-          <Button 
-            variant="primary" 
+              </button>
+              <button
             onClick={async () => {
               try {
                 setLoading(true);
@@ -973,7 +912,7 @@ const DailyAttendance = () => {
                 });
                 
                 if (response.data.success) {
-                  setSuccess(`Successfully marked ${sessionMarkingData.status || 'Present'} for all students in ${sessions.find(s => s.key === selectedSession)?.name}`);
+                      setSuccess(`Successfully marked ${sessionMarkingData.status || 'Present'} for all students`);
                   setShowSessionMarkingModal(false);
                   setSessionMarkingData({});
                   await loadAttendanceData();
@@ -982,38 +921,44 @@ const DailyAttendance = () => {
                 }
               } catch (error) {
                 console.error('Error marking session attendance:', error);
-                setError('Failed to mark session attendance. Please try again.');
+                    const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Failed to mark session attendance. Please try again.';
+                    setError(errorMessage);
               } finally {
                 setLoading(false);
               }
             }}
             disabled={loading}
-            size="lg"
+                className="flex-1 px-6 py-3 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 disabled:opacity-50"
           >
             {loading ? (
-              <>
-                <Spinner size="sm" className="me-2" />
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 Marking...
-              </>
+                  </span>
             ) : (
               `✅ Mark All Students as ${sessionMarkingData.status || 'Present'}`
             )}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Bulk Mark Session Modal */}
-      <Modal show={showBulkMarkModal} onHide={() => setShowBulkMarkModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>📋 Bulk Mark Session</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Select Session</Form.Label>
-              <Form.Select
+      {/* Bulk Mark Modal */}
+      {showBulkMarkModal && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-800">📋 Bulk Mark Session</h2>
+              <button onClick={() => setShowBulkMarkModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Select Session</label>
+                <select
                 value={bulkMarkData.sessionKey}
                 onChange={(e) => setBulkMarkData({...bulkMarkData, sessionKey: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base bg-white"
               >
                 <option value="">Choose a session...</option>
                 {sessions.map(session => (
@@ -1021,52 +966,64 @@ const DailyAttendance = () => {
                     {session.time} - {session.name}
                   </option>
                 ))}
-              </Form.Select>
-            </Form.Group>
-            
-            <Form.Group className="mb-3">
-              <Form.Label>Status for All Students</Form.Label>
-              <Form.Select
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Status for All Students</label>
+                <select
                 value={bulkMarkData.status}
                 onChange={(e) => setBulkMarkData({...bulkMarkData, status: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base bg-white"
               >
                 <option value="Present">✅ Present</option>
                 <option value="Absent">❌ Absent</option>
                 <option value="Sick">🤒 Sick</option>
                 <option value="Leave">🏖️ Leave</option>
-              </Form.Select>
-            </Form.Group>
-            
-            <Form.Group className="mb-3">
-              <Form.Label>Notes (Optional)</Form.Label>
-              <Form.Control
-                as="textarea"
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Notes (Optional)</label>
+                <textarea
                 rows={2}
                 value={bulkMarkData.notes}
                 onChange={(e) => setBulkMarkData({...bulkMarkData, notes: e.target.value})}
                 placeholder="Add any notes for this session..."
-              />
-            </Form.Group>
-          </Form>
-          
-          <Alert variant="warning">
-            <strong>⚠️ Warning:</strong> This will mark <strong>{bulkMarkData.status}</strong> for ALL {students.length} students in the selected session.
-          </Alert>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowBulkMarkModal(false)}>
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base"
+                />
+              </div>
+              
+              <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-4 rounded-xl">
+                <p className="text-sm font-semibold">⚠️ Warning: This will mark <strong>{bulkMarkData.status}</strong> for ALL {students.length} students in the selected session.</p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 p-6 border-t border-slate-200">
+              <button
+                onClick={() => setShowBulkMarkModal(false)}
+                className="flex-1 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-300 transition-colors"
+              >
             Cancel
-          </Button>
-          <Button 
-            variant="primary" 
+              </button>
+              <button
             onClick={bulkMarkSession}
-            disabled={!bulkMarkData.sessionKey}
-          >
-            Mark All Students
-          </Button>
-        </Modal.Footer>
-      </Modal>
-    </Container>
+                disabled={!bulkMarkData.sessionKey || loading}
+                className="flex-1 px-6 py-3 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Marking...
+                  </>
+                ) : (
+                  'Mark All Students'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

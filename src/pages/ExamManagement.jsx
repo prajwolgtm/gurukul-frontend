@@ -10,6 +10,22 @@ import examsAPI, { examMarksAPI } from '../api/exams';
 import academicAPI from '../api/academic';
 import AcademicYearFilter from '../components/AcademicYearFilter';
 
+// Standard options for student selection
+const STANDARD_OPTIONS = [
+  'Pratham 1st Year',
+  'Pratham 2nd Year',
+  'Pratham 3rd Year',
+  'Pravesh 1st Year',
+  'Pravesh 2nd Year',
+  'Moola 1st Year',
+  'Moola 2nd Year',
+  'B.A. 1st Year',
+  'B.A. 2nd Year',
+  'B.A. 3rd Year',
+  'M.A. 1st Year',
+  'M.A. 2nd Year'
+];
+
 const ExamManagement = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -61,6 +77,7 @@ const ExamManagement = () => {
     targetDepartment: '',
     targetSubDepartments: [],
     targetBatches: [],
+    targetStandards: [],
     customStudents: [],
     subjects: [],
     instructions: '',
@@ -220,7 +237,7 @@ const ExamManagement = () => {
   const handleExamFormChange = (e) => {
     const { name, value, type, checked } = e.target;
     
-    if (name === 'targetSubDepartments' || name === 'targetBatches' || name === 'targetDepartments' || name === 'customStudents') {
+    if (name === 'targetSubDepartments' || name === 'targetBatches' || name === 'targetDepartments' || name === 'targetStandards' || name === 'customStudents') {
       // Handle multiple select
       const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
       
@@ -300,6 +317,7 @@ const ExamManagement = () => {
         targetDepartment: '',
         targetSubDepartments: [],
         targetBatches: [],
+        targetStandards: [],
         customStudents: []
       }));
     }
@@ -334,9 +352,11 @@ const ExamManagement = () => {
         ...examFormData,
         // Map selection type to correct field names
         examScope: examFormData.selectionType,
+        selectionType: examFormData.selectionType,
         department: examFormData.selectionType === 'department' ? examFormData.targetDepartment : undefined,
         subDepartments: examFormData.selectionType === 'subDepartment' ? examFormData.targetSubDepartments : undefined,
         batches: examFormData.selectionType === 'batch' ? examFormData.targetBatches : undefined,
+        targetStandards: examFormData.selectionType === 'standard' ? examFormData.targetStandards : undefined,
         customStudents: examFormData.selectionType === 'custom' ? examFormData.customStudents : undefined,
         // Include division configuration (fixed 1-10 divisions)
         useDivisions: examFormData.useDivisions || false,
@@ -413,10 +433,11 @@ const ExamManagement = () => {
       startTime: exam.startTime || '',
       endTime: exam.endTime || '',
       duration: exam.duration || 180,
-      selectionType: exam.examScope || 'department',
+      selectionType: exam.examScope || exam.selectionType || 'department',
       targetDepartment: exam.department?._id || '',
-      targetSubDepartments: exam.subDepartments?.map(sd => sd._id) || [],
-      targetBatches: exam.batches?.map(b => b._id) || [],
+      targetSubDepartments: exam.subDepartments?.map(sd => sd._id) || exam.targetSubDepartments?.map(sd => sd._id || sd) || [],
+      targetBatches: exam.batches?.map(b => b._id) || exam.targetBatches?.map(b => b._id || b) || [],
+      targetStandards: exam.targetStandards || [],
       customStudents: exam.customStudents?.map(s => s._id) || [],
       subjects: exam.subjects || [],
       instructions: exam.instructions || '',
@@ -903,7 +924,8 @@ const ExamManagement = () => {
                               <Badge bg="primary" className="me-1">
                                 {exam.selectionType === 'department' ? 'Department' :
                                  exam.selectionType === 'subDepartment' ? 'Sub-Department' :
-                                 exam.selectionType === 'batch' ? 'Batch' : 'Custom'}
+                                 exam.selectionType === 'batch' ? 'Batch' :
+                                 exam.selectionType === 'standard' ? 'Standard' : 'Custom'}
                               </Badge>
                               <br />
                               <small className="text-muted">
@@ -917,6 +939,8 @@ const ExamManagement = () => {
                                   ? exam.targetSubDepartments.map(sd => sd.name || sd).join(', ')
                                   : exam.selectionType === 'batch' && exam.targetBatches?.length > 0
                                   ? exam.targetBatches.map(b => b.name || b).join(', ')
+                                  : exam.selectionType === 'standard' && exam.targetStandards?.length > 0
+                                  ? exam.targetStandards.join(', ')
                                   : exam.selectionType === 'custom' && exam.customStudents?.length > 0
                                   ? `${exam.customStudents.length} students`
                                   : 'No selection'}
@@ -1206,6 +1230,7 @@ const ExamManagement = () => {
                         <option value="department">Entire Department</option>
                         <option value="subDepartment">Sub-Department(s)</option>
                         <option value="batch">Batch(es)</option>
+                        <option value="standard">Standard(s)</option>
                         <option value="custom">Custom Student Selection</option>
                       </Form.Select>
                     </Form.Group>
@@ -1327,6 +1352,31 @@ const ExamManagement = () => {
                         </Form.Group>
                       </Col>
                     </>
+                  )}
+
+                  {examFormData.selectionType === 'standard' && (
+                    <Col md={12}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Select Standard(s) *</Form.Label>
+                        <Form.Select
+                          multiple
+                          name="targetStandards"
+                          value={examFormData.targetStandards}
+                          onChange={handleExamFormChange}
+                          size={6}
+                          required
+                        >
+                          {STANDARD_OPTIONS.map(standard => (
+                            <option key={standard} value={standard}>
+                              {standard}
+                            </option>
+                          ))}
+                        </Form.Select>
+                        <Form.Text className="text-muted">
+                          Hold Ctrl/Cmd to select multiple standards. Students with matching current standard will be included.
+                        </Form.Text>
+                      </Form.Group>
+                    </Col>
                   )}
 
                   {examFormData.selectionType === 'custom' && (

@@ -3,8 +3,10 @@ import { lazy, Suspense } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { AuthProvider } from './store/auth';
 import ProtectedRoute from './components/ProtectedRoute';
+import RoleBasedRoute from './components/RoleBasedRoute';
 import Layout from './components/Layout';
 import { Spinner } from 'react-bootstrap';
+import { ROLES } from './utils/roles';
 
 // Lazy load components for better initial load time
 const Login = lazy(() => import('./pages/Login'));
@@ -31,6 +33,7 @@ const SelfAttendance = lazy(() => import('./pages/SelfAttendance'));
 const ParentDashboard = lazy(() => import('./pages/ParentDashboard'));
 const PasswordReset = lazy(() => import('./pages/PasswordReset'));
 const AcademicYearSettings = lazy(() => import('./pages/AcademicYearSettings'));
+const SecurityQRScanner = lazy(() => import('./pages/SecurityQRScanner'));
 
 // Loading component
 const LoadingSpinner = () => (
@@ -51,7 +54,11 @@ function App() {
             <Route path="/register-staff" element={<StaffRegistration />} />
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout><Outlet /></Layout>}>
-                <Route index element={<Dashboard />} />
+                <Route index element={
+                  <RoleBasedRoute allowedRoles={[ROLES.ADMIN, ROLES.COORDINATOR, ROLES.PRINCIPAL, ROLES.HOD, ROLES.TEACHER, ROLES.CARETAKER]}>
+                    <Dashboard />
+                  </RoleBasedRoute>
+                } />
                 <Route path="departments" element={<DepartmentManagement />} />
                 <Route path="requests" element={<RequestManagement />} />
                 <Route path="attendance" element={<DailyAttendance />} />
@@ -73,6 +80,7 @@ function App() {
                 <Route path="parent-dashboard" element={<ParentDashboard />} />
                 <Route path="password-reset" element={<PasswordReset />} />
                 <Route path="academic-year-settings" element={<AcademicYearSettings />} />
+                <Route path="security-scanner" element={<SecurityQRScanner />} />
               </Route>
             </Route>
           </Routes>

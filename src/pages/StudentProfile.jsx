@@ -15,6 +15,7 @@ import {
   Table
 } from 'react-bootstrap';
 import studentProfileAPI from '../api/studentProfile';
+import studentsAPI from '../api/students';
 import { useAuth } from '../store/auth';
 import { getLeaveRequests, getVisitRequests } from '../api/requests';
 
@@ -77,6 +78,22 @@ const StudentProfile = () => {
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [visitRequests, setVisitRequests] = useState([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
+  const [healthRecords, setHealthRecords] = useState([]);
+  const [healthLoading, setHealthLoading] = useState(false);
+  const [showHealthModal, setShowHealthModal] = useState(false);
+  const [healthForm, setHealthForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    heightCm: '',
+    weightKg: '',
+    condition: '',
+    remarks: '',
+    checkupType: 'routine',
+    hospitalName: '',
+    reason: '',
+    diagnosis: '',
+    treatment: '',
+    followUpDate: ''
+  });
 
   const canAddNotes = profile?.permissions?.canAddNotes;
 
@@ -138,6 +155,60 @@ const StudentProfile = () => {
       console.error('Error loading requests:', err);
     } finally {
       setRequestsLoading(false);
+    }
+  };
+
+  const loadHealthRecords = async () => {
+    if (!studentId) return;
+    setHealthLoading(true);
+    try {
+      const response = await studentsAPI.getHealthRecords(studentId);
+      if (response.success) {
+        setHealthRecords(response.data.records || []);
+      }
+    } catch (err) {
+      console.error('Error loading health records:', err);
+    } finally {
+      setHealthLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (studentId) {
+      loadHealthRecords();
+    }
+  }, [studentId]);
+
+  const handleHealthSubmit = async (e) => {
+    e.preventDefault();
+    if (!studentId) return;
+    
+    setHealthLoading(true);
+    try {
+      const response = await studentsAPI.addHealthRecord(studentId, healthForm);
+      if (response.success) {
+        setShowHealthModal(false);
+        setHealthForm({
+          date: new Date().toISOString().split('T')[0],
+          heightCm: '',
+          weightKg: '',
+          condition: '',
+          remarks: '',
+          checkupType: 'routine',
+          hospitalName: '',
+          reason: '',
+          diagnosis: '',
+          treatment: '',
+          followUpDate: ''
+        });
+        await loadHealthRecords();
+        await loadProfile(); // Reload to update latestHealth
+      }
+    } catch (err) {
+      console.error('Error adding health record:', err);
+      alert(err?.response?.data?.message || 'Failed to add health record');
+    } finally {
+      setHealthLoading(false);
     }
   };
 
@@ -291,8 +362,8 @@ const StudentProfile = () => {
 
       <Row className="g-3">
         <Col md={8}>
-          <Card className="h-100">
-            <Card.Body>
+          <Card>
+            <Card.Body className="pb-2">
               <div className="d-flex justify-content-between flex-wrap gap-2">
                 <div>
                   <h3 className="mb-0">
@@ -318,20 +389,20 @@ const StudentProfile = () => {
                 </div>
               </div>
 
-              <Row className="mt-3">
+              <Row className="mt-3 mb-0">
                 <Col md={6}>
-                  <h6>Academic Placement</h6>
+                  <h6 className="mb-2">Academic Placement</h6>
                   <ListGroup variant="flush" className="small">
-                    <ListGroup.Item className="px-0">
+                    <ListGroup.Item className="px-0 py-1">
                       Department: <strong>{profile.student.academic?.department?.name || '—'}</strong>
                     </ListGroup.Item>
-                    <ListGroup.Item className="px-0">
+                    <ListGroup.Item className="px-0 py-1">
                       Sub-Departments:{' '}
                       {profile.student.academic?.subDepartments?.length
                         ? profile.student.academic.subDepartments.map(sd => sd.name).join(', ')
                         : '—'}
                     </ListGroup.Item>
-                    <ListGroup.Item className="px-0">
+                    <ListGroup.Item className="px-0 py-1">
                       Batches:{' '}
                       {profile.student.academic?.batches?.length
                         ? profile.student.academic.batches.map(batch => batch.name).join(', ')
@@ -340,20 +411,185 @@ const StudentProfile = () => {
                   </ListGroup>
                 </Col>
                 <Col md={6}>
-                  <h6>Contact</h6>
+                  <h6 className="mb-2">Contact</h6>
                   <ListGroup variant="flush" className="small">
-                    <ListGroup.Item className="px-0">
+                    <ListGroup.Item className="px-0 py-1">
                       Phone: <strong>{profile.student.contact?.phone || '—'}</strong>
                     </ListGroup.Item>
-                    <ListGroup.Item className="px-0">
+                    <ListGroup.Item className="px-0 py-1">
                       Guardian: <strong>{profile.student.contact?.guardianPhone || '—'}</strong>
                     </ListGroup.Item>
-                    <ListGroup.Item className="px-0">
+                    <ListGroup.Item className="px-0 py-1">
                       Address: <strong>{profile.student.contact?.address || '—'}</strong>
                     </ListGroup.Item>
                   </ListGroup>
                 </Col>
               </Row>
+
+              <hr className="my-3" />
+
+              <div>
+                <h5 className="mb-3">Student Account / Wallet</h5>
+                {profile.wallet ? (
+                  <>
+                    <div className="mb-2">
+                      <div className="fw-bold">
+                        {profile.wallet.currentBalance ?? 0} {profile.wallet.currency || 'INR'}
+                      </div>
+                      <div className="text-muted small">
+                        Current Balance (Office-held + Puja collections etc.)
+                      </div>
+                    </div>
+                    <div className="text-muted small mb-2">
+                      Total Credit: {profile.wallet.totalCredit ?? 0} • Total Debit: {profile.wallet.totalDebit ?? 0}
+                    </div>
+                    {Array.isArray(profile.wallet.recentTransactions) && profile.wallet.recentTransactions.length > 0 && (
+                      <div className="table-responsive small">
+                        <Table size="sm" className="mb-2">
+                          <thead>
+                            <tr>
+                              <th>Date</th>
+                              <th>Type</th>
+                              <th>Amt</th>
+                              <th>Bal</th>
+                              <th>Remark</th>
+                              {canEditWallet && <th />}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {profile.wallet.recentTransactions.map(tx => (
+                              <tr key={tx.id}>
+                                <td>{formatDate(tx.date)}</td>
+                                <td>
+                                  <Badge bg={tx.type === 'credit' ? 'success' : 'danger'}>
+                                    {tx.type}
+                                  </Badge>
+                                </td>
+                                <td>{tx.amount}</td>
+                                <td>{tx.balanceAfter}</td>
+                                <td>{tx.creditRemark || tx.debitRemark || '-'}</td>
+                                {canEditWallet && (
+                                  <td>
+                                    <Button
+                                      variant="outline-secondary"
+                                      size="sm"
+                                      onClick={() => handleOpenEditTx(tx)}
+                                    >
+                                      ✏️
+                                    </Button>
+                                  </td>
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </Table>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-muted small">
+                    No wallet data yet. Add a credit or debit transaction to initialize the balance.
+                  </div>
+                )}
+              </div>
+
+              <hr className="my-3" />
+
+              <div>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h5>🩺 Health Records</h5>
+                  {canEditWallet && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setShowHealthModal(true)}
+                    >
+                      + Add Record
+                    </Button>
+                  )}
+                </div>
+                {profile?.student?.latestHealth && (
+                  <div className="mb-3 p-3 bg-light rounded">
+                    <h6 className="small mb-2">Latest Health Summary</h6>
+                    <div className="row small">
+                      <div className="col-6">
+                        <strong>Height:</strong> {profile.student.latestHealth.heightCm ? `${profile.student.latestHealth.heightCm} cm` : 'N/A'}
+                      </div>
+                      <div className="col-6">
+                        <strong>Weight:</strong> {profile.student.latestHealth.weightKg ? `${profile.student.latestHealth.weightKg} kg` : 'N/A'}
+                      </div>
+                      {profile.student.latestHealth.lastCheckupDate && (
+                        <div className="col-12 mt-2">
+                          <strong>Last Check-up:</strong> {formatDate(profile.student.latestHealth.lastCheckupDate)}
+                        </div>
+                      )}
+                      {profile.student.latestHealth.condition && (
+                        <div className="col-12 mt-2">
+                          <strong>Condition:</strong> {profile.student.latestHealth.condition}
+                        </div>
+                      )}
+                      {profile.student.latestHealth.notes && (
+                        <div className="col-12 mt-2">
+                          <strong>Notes:</strong> {profile.student.latestHealth.notes}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {healthLoading ? (
+                  <Spinner size="sm" />
+                ) : healthRecords.length > 0 ? (
+                  <div className="table-responsive small">
+                    <Table size="sm" className="mb-0">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Type</th>
+                          <th>Height</th>
+                          <th>Weight</th>
+                          <th>Details</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {healthRecords.slice(0, 10).map(record => (
+                          <tr key={record._id}>
+                            <td>{formatDate(record.date)}</td>
+                            <td>
+                              <Badge bg={
+                                record.checkupType === 'hospital' ? 'danger' :
+                                record.checkupType === 'emergency' ? 'warning' :
+                                'info'
+                              }>
+                                {record.checkupType}
+                              </Badge>
+                            </td>
+                            <td>{record.heightCm ? `${record.heightCm} cm` : '-'}</td>
+                            <td>{record.weightKg ? `${record.weightKg} kg` : '-'}</td>
+                            <td>
+                              {record.hospitalName && <div><small>🏥 {record.hospitalName}</small></div>}
+                              {record.reason && <div><small>Reason: {record.reason}</small></div>}
+                              {record.diagnosis && <div><small>Diagnosis: {record.diagnosis}</small></div>}
+                              {record.condition && <div><small>Condition: {record.condition}</small></div>}
+                              {record.remarks && <div><small>{record.remarks}</small></div>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                    {healthRecords.length > 10 && (
+                      <div className="text-center mt-2">
+                        <small className="text-muted">
+                          Showing 10 of {healthRecords.length} records
+                        </small>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-muted small">
+                    No health records yet. Add a record to track medical checkups and hospital visits.
+                  </div>
+                )}
+              </div>
             </Card.Body>
           </Card>
         </Col>
@@ -465,73 +701,6 @@ const StudentProfile = () => {
               </Card.Body>
             </Card>
           )}
-          
-          <Card>
-            <Card.Body>
-              <h5>Student Account / Wallet</h5>
-              {profile.wallet ? (
-                <>
-                  <div className="mb-2">
-                    <div className="fw-bold">
-                      {profile.wallet.currentBalance ?? 0} {profile.wallet.currency || 'INR'}
-                    </div>
-                    <div className="text-muted small">
-                      Current Balance (Office-held + Puja collections etc.)
-                    </div>
-                  </div>
-                  <div className="text-muted small mb-2">
-                    Total Credit: {profile.wallet.totalCredit ?? 0} • Total Debit: {profile.wallet.totalDebit ?? 0}
-                  </div>
-                  {Array.isArray(profile.wallet.recentTransactions) && profile.wallet.recentTransactions.length > 0 && (
-                    <div className="table-responsive small">
-                      <Table size="sm" className="mb-2">
-                        <thead>
-                          <tr>
-                            <th>Date</th>
-                            <th>Type</th>
-                            <th>Amt</th>
-                            <th>Bal</th>
-                            <th>Remark</th>
-                            {canEditWallet && <th />}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {profile.wallet.recentTransactions.map(tx => (
-                            <tr key={tx.id}>
-                              <td>{formatDate(tx.date)}</td>
-                              <td>
-                                <Badge bg={tx.type === 'credit' ? 'success' : 'danger'}>
-                                  {tx.type}
-                                </Badge>
-                              </td>
-                              <td>{tx.amount}</td>
-                              <td>{tx.balanceAfter}</td>
-                              <td>{tx.creditRemark || tx.debitRemark || '-'}</td>
-                              {canEditWallet && (
-                                <td>
-                                  <Button
-                                    variant="outline-secondary"
-                                    size="sm"
-                                    onClick={() => handleOpenEditTx(tx)}
-                                  >
-                                    ✏️
-                                  </Button>
-                                </td>
-                              )}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </Table>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="text-muted small">
-                  No wallet data yet. Add a credit or debit transaction to initialize the balance.
-                </div>
-              )}
-            </Card.Body>
-          </Card>
         </Col>
       </Row>
 
@@ -781,7 +950,7 @@ const StudentProfile = () => {
       )}
 
       <Row className="g-3 mt-1">
-        <Col md={7}>
+        <Col md={8}>
           <Card>
             <Card.Header>
               <div className="d-flex justify-content-between align-items-center">
@@ -827,8 +996,8 @@ const StudentProfile = () => {
           </Card>
         </Col>
 
-        <Col md={5}>
-          <Card>
+        <Col md={4}>
+          <Card className="mb-3">
             <Card.Header>
               <strong>Add Note / Update</strong>
             </Card.Header>
@@ -903,7 +1072,7 @@ const StudentProfile = () => {
               )}
             </Card.Body>
           </Card>
-          <Card className="mt-3">
+          <Card>
             <Card.Header>
               <strong>Wallet Transaction (Credit / Debit)</strong>
             </Card.Header>
@@ -979,6 +1148,159 @@ const StudentProfile = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* Health Record Modal */}
+      <Modal show={showHealthModal} onHide={() => setShowHealthModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>🩺 Add Health Record</Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleHealthSubmit}>
+          <Modal.Body>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Date *</Form.Label>
+                  <Form.Control
+                    type="date"
+                    value={healthForm.date}
+                    onChange={(e) => setHealthForm({ ...healthForm, date: e.target.value })}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Check-up Type *</Form.Label>
+                  <Form.Select
+                    value={healthForm.checkupType}
+                    onChange={(e) => setHealthForm({ ...healthForm, checkupType: e.target.value })}
+                    required
+                  >
+                    <option value="routine">Routine Check-up</option>
+                    <option value="hospital">Hospital Visit</option>
+                    <option value="emergency">Emergency</option>
+                    <option value="other">Other</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Height (cm)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={healthForm.heightCm}
+                    onChange={(e) => setHealthForm({ ...healthForm, heightCm: e.target.value })}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Weight (kg)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={healthForm.weightKg}
+                    onChange={(e) => setHealthForm({ ...healthForm, weightKg: e.target.value })}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={12}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Health Condition</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={healthForm.condition}
+                    onChange={(e) => setHealthForm({ ...healthForm, condition: e.target.value })}
+                    placeholder="e.g. Asthma, allergy, chronic condition"
+                  />
+                </Form.Group>
+              </Col>
+              {healthForm.checkupType === 'hospital' && (
+                <>
+                  <Col md={12}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Hospital Name</Form.Label>
+                      <Form.Control
+                        type="text"
+                        value={healthForm.hospitalName}
+                        onChange={(e) => setHealthForm({ ...healthForm, hospitalName: e.target.value })}
+                        placeholder="Name of hospital/clinic"
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={12}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Reason for Visit</Form.Label>
+                      <Form.Control
+                        type="text"
+                        value={healthForm.reason}
+                        onChange={(e) => setHealthForm({ ...healthForm, reason: e.target.value })}
+                        placeholder="Why did the student visit the hospital?"
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={12}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Diagnosis</Form.Label>
+                      <Form.Control
+                        type="text"
+                        value={healthForm.diagnosis}
+                        onChange={(e) => setHealthForm({ ...healthForm, diagnosis: e.target.value })}
+                        placeholder="Doctor's diagnosis"
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={12}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Treatment</Form.Label>
+                      <Form.Control
+                        as="textarea"
+                        rows={2}
+                        value={healthForm.treatment}
+                        onChange={(e) => setHealthForm({ ...healthForm, treatment: e.target.value })}
+                        placeholder="Treatment prescribed or given"
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Follow-up Date</Form.Label>
+                      <Form.Control
+                        type="date"
+                        value={healthForm.followUpDate}
+                        onChange={(e) => setHealthForm({ ...healthForm, followUpDate: e.target.value })}
+                      />
+                    </Form.Group>
+                  </Col>
+                </>
+              )}
+              <Col md={12}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Remarks / Notes</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    value={healthForm.remarks}
+                    onChange={(e) => setHealthForm({ ...healthForm, remarks: e.target.value })}
+                    placeholder="Any additional notes or remarks"
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowHealthModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" disabled={healthLoading}>
+              {healthLoading ? 'Saving...' : 'Add Record'}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </div>
   );
 };
