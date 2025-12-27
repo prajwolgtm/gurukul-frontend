@@ -42,6 +42,7 @@ const ExamManagement = () => {
   // Form states
   const [showExamModal, setShowExamModal] = useState(false);
   const [showSubjectModal, setShowSubjectModal] = useState(false);
+  const [showSubjectsListModal, setShowSubjectsListModal] = useState(false);
   const [showMarksModal, setShowMarksModal] = useState(false);
   const [showMarksEntryModal, setShowMarksEntryModal] = useState(false);
   const [editingExam, setEditingExam] = useState(null);
@@ -419,6 +420,30 @@ const ExamManagement = () => {
     }
   };
 
+  const handleDeleteSubject = async (subjectId) => {
+    if (!window.confirm('Are you sure you want to delete this subject? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await examsAPI.deleteSubject(subjectId);
+      setMessage({ type: 'success', text: 'Subject deleted successfully!' });
+      
+      // Reload all subjects (including inactive) for the subjects list modal
+      const allSubjectsResponse = await examsAPI.getSubjects({ includeInactive: true });
+      setSubjects(allSubjectsResponse.subjects || []);
+    } catch (error) {
+      console.error('❌ Error deleting subject:', error);
+      setMessage({
+        type: 'danger',
+        text: error.response?.data?.message || 'Error deleting subject'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleEdit = (exam) => {
     setEditingExam(exam);
     // Check if any subject uses divisions
@@ -725,12 +750,36 @@ const ExamManagement = () => {
               <p className="text-muted mb-0">Create exams, select students, and manage marks</p>
             </div>
             <div className="d-flex gap-2">
+              {/* View Subjects - Available to all users who can manage exams */}
+              {canManage && (
+                <Button 
+                  variant="outline-info" 
+                  onClick={async () => {
+                    setShowSubjectsListModal(true);
+                    // Load all subjects (including inactive) when opening the modal
+                    try {
+                      setLoading(true);
+                      const response = await examsAPI.getSubjects({ includeInactive: true });
+                      setSubjects(response.subjects || []);
+                    } catch (error) {
+                      console.error('Error loading subjects:', error);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                  className="me-2"
+                >
+                  📋 View Subjects
+                </Button>
+              )}
               {canCreate && (
                 <>
                   <Button 
                     variant="outline-primary" 
                     onClick={() => { resetSubjectForm(); setShowSubjectModal(true); }}
                     disabled={loading}
+                    className="me-2"
                   >
                     ➕ Add Subject
                   </Button>
@@ -1636,6 +1685,90 @@ const ExamManagement = () => {
             </Button>
           </Modal.Footer>
         </Form>
+      </Modal>
+
+      {/* View Subjects Modal */}
+      <Modal show={showSubjectsListModal} onHide={() => setShowSubjectsListModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>📚 All Subjects</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {loading && (
+            <div className="text-center py-4">
+              <Spinner animation="border" variant="primary" />
+            </div>
+          )}
+          {!loading && subjects.length === 0 ? (
+            <div className="text-center py-4">
+              <p className="text-muted">No subjects found. Create your first subject!</p>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <Table striped hover>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th>Category</th>
+                    <th>Credits</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subjects.map(subject => (
+                    <tr key={subject._id} className={!subject.isActive ? 'opacity-50' : ''}>
+                      <td>
+                        {subject.name}
+                        {!subject.isActive && (
+                          <Badge bg="secondary" className="ms-2">Inactive</Badge>
+                        )}
+                      </td>
+                      <td>
+                        <Badge bg="info">{subject.code}</Badge>
+                      </td>
+                      <td>
+                        <Badge bg="secondary">{subject.category || 'N/A'}</Badge>
+                      </td>
+                      <td>{subject.credits || 'N/A'}</td>
+                      <td>
+                        {canDelete && subject.isActive && (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => handleDeleteSubject(subject._id)}
+                            disabled={loading}
+                          >
+                            🗑️ Delete
+                          </Button>
+                        )}
+                        {!subject.isActive && (
+                          <span className="text-muted text-sm">Deleted</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowSubjectsListModal(false)}>
+            Close
+          </Button>
+          {canCreate && (
+            <Button 
+              variant="primary" 
+              onClick={() => {
+                setShowSubjectsListModal(false);
+                resetSubjectForm();
+                setShowSubjectModal(true);
+              }}
+            >
+              ➕ Add New Subject
+            </Button>
+          )}
+        </Modal.Footer>
       </Modal>
 
       {/* Manage Marks Modal */}

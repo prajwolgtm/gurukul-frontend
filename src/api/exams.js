@@ -3,13 +3,20 @@ import api from './client';
 // Exam Management API Service
 export const examsAPI = {
   // Subjects
-  getSubjects: async () => {
-    const response = await api.get('/exam-management/subjects');
+  getSubjects: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/exam-management/subjects?${queryString}` : '/exam-management/subjects';
+    const response = await api.get(url);
     return response.data;
   },
 
   createSubject: async (subjectData) => {
     const response = await api.post('/exam-management/subjects', subjectData);
+    return response.data;
+  },
+
+  deleteSubject: async (id) => {
+    const response = await api.delete(`/exam-management/subjects/${id}`);
     return response.data;
   },
 

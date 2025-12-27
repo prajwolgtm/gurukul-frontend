@@ -16,7 +16,7 @@ const StatCard = ({ title, value, subtitle, icon, color, badges }) => {
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all">
       <div className="flex items-start justify-between">
-        <div>
+    <div>
           <p className="text-sm font-medium text-slate-500">{title}</p>
           <h3 className="text-3xl font-bold text-slate-800 mt-1">{value}</h3>
           {subtitle && <p className="text-sm text-slate-500 mt-1">{subtitle}</p>}
@@ -27,13 +27,13 @@ const StatCard = ({ title, value, subtitle, icon, color, badges }) => {
                   {badge.label}
                 </span>
               ))}
-            </div>
+              </div>
           )}
-        </div>
+                  </div>
         <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${colorClasses[color]} flex items-center justify-center text-2xl shadow-lg`}>
           {icon}
-        </div>
-      </div>
+                </div>
+              </div>
     </div>
   );
 };
@@ -119,6 +119,8 @@ const Dashboard = () => {
       }
       const { data } = await api.get('/dashboard/summary', { params });
       if (data?.success) {
+        console.log('📊 Dashboard data received:', data.data);
+        console.log('📊 Student stats:', data.data?.statistics?.students);
         setDashboardData(data.data);
       } else {
         setError(data?.message || 'Failed to load dashboard');
@@ -143,8 +145,8 @@ const Dashboard = () => {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <p className="text-slate-600 mb-4">Redirecting to your dashboard...</p>
-        </div>
-      </div>
+                </div>
+              </div>
     );
   }
 
@@ -152,8 +154,8 @@ const Dashboard = () => {
     return (
       <div className="bg-amber-100 text-amber-800 p-4 rounded-xl font-medium">
         Please log in to view your dashboard.
-      </div>
-    );
+    </div>
+  );
   }
 
   const menu = getMenuForRole(user.role);
@@ -163,12 +165,12 @@ const Dashboard = () => {
     <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+    <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">
             Welcome back, {user.fullName || 'User'} 👋
           </h1>
           <p className="text-slate-500 mt-1">Here's what's happening in your school today</p>
-        </div>
+              </div>
         <div className="flex items-center gap-3">
           {canTakeAttendance && (
             <Link
@@ -184,8 +186,8 @@ const Dashboard = () => {
             onChange={setAcademicYear}
             size="sm"
           />
-        </div>
-      </div>
+                </div>
+              </div>
 
       {/* Error */}
       {error && (
@@ -204,7 +206,7 @@ const Dashboard = () => {
       {dashboardData && !loading && (
         <>
           {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
             <StatCard
               title="Total Exams"
               value={stats?.exams?.total || 0}
@@ -216,25 +218,32 @@ const Dashboard = () => {
               ]}
             />
             <StatCard
-              title="Total Students"
-              value={stats?.students?.total || 0}
-              subtitle="Across all departments"
+              title="Active Students"
+              value={stats?.students?.active || 0}
+              subtitle="Currently enrolled"
               icon="👨‍🎓"
               color="emerald"
+            />
+            <StatCard
+              title="Graduated Students"
+              value={stats?.students?.graduated || 0}
+              subtitle="Completed studies"
+              icon="🎓"
+              color="sky"
             />
             <StatCard
               title="Active Classes"
               value={stats?.classes?.active || 0}
               subtitle={`of ${stats?.classes?.total || 0} total`}
               icon="🏫"
-              color="sky"
+              color="amber"
             />
             <StatCard
               title="Attendance Rate"
               value={`${stats?.attendance?.rate || 0}%`}
               subtitle={`${stats?.attendance?.present || 0} / ${stats?.attendance?.totalSessions || 0}`}
               icon="📊"
-              color="amber"
+              color="violet"
             />
           </div>
 
@@ -269,7 +278,7 @@ const Dashboard = () => {
                   </div>
                 </div>
               </div>
-            </div>
+    </div>
 
             <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg shadow-violet-200">
               <p className="text-violet-200 text-sm font-medium">Academic Year</p>
@@ -279,10 +288,10 @@ const Dashboard = () => {
                 <p className="text-violet-200 text-sm font-medium">Total Teachers</p>
                 <h4 className="text-xl font-bold">{stats?.teachers?.total || 0}</h4>
               </div>
-            </div>
-          </div>
+                </div>
+              </div>
 
-          {/* Recent Activity */}
+      {/* Recent Activity */}
           {dashboardData?.recentActivity && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -296,7 +305,7 @@ const Dashboard = () => {
                   {dashboardData.recentActivity.exams?.length > 0 ? (
                     dashboardData.recentActivity.exams.slice(0, 4).map((exam, idx) => (
                       <div key={idx} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50">
-                        <div>
+                  <div>
                           <p className="font-medium text-slate-800">{exam.name}</p>
                           <p className="text-sm text-slate-500">{exam.subject}</p>
                         </div>
@@ -305,7 +314,7 @@ const Dashboard = () => {
                         }`}>
                           {exam.status}
                         </span>
-                      </div>
+                  </div>
                     ))
                   ) : (
                     <div className="px-6 py-12 text-center text-slate-400">No recent exams</div>
