@@ -63,7 +63,7 @@ const ExamManagement = () => {
     description: '',
     academicYear: '',
     term: 'annual',
-    semester: 1,
+    standard: '', // Standard field for classification
     startDate: '',
     endDate: '',
     startTime: '',
@@ -311,7 +311,7 @@ const ExamManagement = () => {
         setShowCreateExam(false);
         setExamForm({
           examName: '', examType: 'midterm', subject: '', description: '',
-          academicYear: '', term: 'annual', semester: 1,
+          academicYear: '', term: 'annual', standard: '',
           startDate: '', endDate: '', startTime: '', endTime: '', duration: 120,
           totalMarks: 100, passingMarks: 40,
           useDivisions: false,
@@ -482,7 +482,7 @@ const ExamManagement = () => {
               setExamForm({
                 examName: '', examType: 'midterm', subject: '', description: '',
                 academicYear: currentYearValue,
-                term: 'annual', semester: 1,
+                term: 'annual', standard: '',
                 startDate: '', endDate: '', startTime: '', endTime: '', duration: 120,
                 totalMarks: 100, passingMarks: 40,
                 useDivisions: false,
@@ -806,14 +806,22 @@ const ExamManagement = () => {
               </Col>
               <Col md={4}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Semester</Form.Label>
-                  <Form.Control
-                    type="number"
-                    value={examForm.semester}
-                    onChange={(e) => setExamForm({...examForm, semester: parseInt(e.target.value) || 1})}
-                    min="1"
-                    max="8"
-                  />
+                  <Form.Label>Standard</Form.Label>
+                  <Form.Select
+                    name="standard"
+                    value={examForm.standard}
+                    onChange={(e) => setExamForm({...examForm, standard: e.target.value})}
+                  >
+                    <option value="">Select Standard (Optional)</option>
+                    {STANDARD_OPTIONS.map(standard => (
+                      <option key={standard} value={standard}>
+                        {standard}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Text className="text-muted">
+                    Select the standard/class level for this exam (for classification only)
+                  </Form.Text>
                 </Form.Group>
               </Col>
             </Row>

@@ -74,11 +74,13 @@ const ExamManagement = () => {
     startTime: '',
     endTime: '',
     duration: 180,
+    standard: '', // Standard field for Basic Info tab
     selectionType: 'department',
     targetDepartment: '',
     targetSubDepartments: [],
     targetBatches: [],
     targetStandards: [],
+    targetDepartmentStandard: '', // For department + single standard selection
     customStudents: [],
     subjects: [],
     instructions: '',
@@ -319,6 +321,7 @@ const ExamManagement = () => {
         targetSubDepartments: [],
         targetBatches: [],
         targetStandards: [],
+        targetDepartmentStandard: '',
         customStudents: []
       }));
     }
@@ -329,7 +332,8 @@ const ExamManagement = () => {
       setExamFormData(prev => ({
         ...prev,
         targetSubDepartments: [],
-        targetBatches: []
+        targetBatches: [],
+        targetDepartmentStandard: ''
       }));
     }
   };
@@ -354,11 +358,14 @@ const ExamManagement = () => {
         // Map selection type to correct field names
         examScope: examFormData.selectionType,
         selectionType: examFormData.selectionType,
-        department: examFormData.selectionType === 'department' ? examFormData.targetDepartment : undefined,
+        department: (examFormData.selectionType === 'department' || examFormData.selectionType === 'departmentStandard') ? examFormData.targetDepartment : undefined,
+        targetDepartmentStandard: examFormData.selectionType === 'departmentStandard' ? examFormData.targetDepartmentStandard : undefined,
         subDepartments: examFormData.selectionType === 'subDepartment' ? examFormData.targetSubDepartments : undefined,
         batches: examFormData.selectionType === 'batch' ? examFormData.targetBatches : undefined,
         targetStandards: examFormData.selectionType === 'standard' ? examFormData.targetStandards : undefined,
         customStudents: examFormData.selectionType === 'custom' ? examFormData.customStudents : undefined,
+        // Standard field for Basic Info tab (not linked to student selection)
+        standard: examFormData.standard || undefined,
         // Include division configuration (fixed 1-10 divisions)
         useDivisions: examFormData.useDivisions || false,
         divisions: examFormData.useDivisions 
@@ -458,11 +465,13 @@ const ExamManagement = () => {
       startTime: exam.startTime || '',
       endTime: exam.endTime || '',
       duration: exam.duration || 180,
+      standard: exam.standard || exam.semester || '', // Support both standard and semester for backward compatibility
       selectionType: exam.examScope || exam.selectionType || 'department',
       targetDepartment: exam.department?._id || '',
       targetSubDepartments: exam.subDepartments?.map(sd => sd._id) || exam.targetSubDepartments?.map(sd => sd._id || sd) || [],
       targetBatches: exam.batches?.map(b => b._id) || exam.targetBatches?.map(b => b._id || b) || [],
       targetStandards: exam.targetStandards || [],
+      targetDepartmentStandard: exam.targetDepartmentStandard || '',
       customStudents: exam.customStudents?.map(s => s._id) || [],
       subjects: exam.subjects || [],
       instructions: exam.instructions || '',
@@ -708,12 +717,15 @@ const ExamManagement = () => {
       startTime: '',
       endTime: '',
       duration: 180,
+      standard: '',
       selectionType: 'department',
       targetDepartment: '',
       targetDepartments: [],
-      targetSubDepartments: [],
-      targetBatches: [],
-      customStudents: [],
+        targetSubDepartments: [],
+        targetBatches: [],
+        targetStandards: [],
+        targetDepartmentStandard: '',
+        customStudents: [],
       subjects: [],
       instructions: '',
       venue: '',
@@ -972,6 +984,7 @@ const ExamManagement = () => {
                             <div>
                               <Badge bg="primary" className="me-1">
                                 {exam.selectionType === 'department' ? 'Department' :
+                                 exam.selectionType === 'departmentStandard' ? 'Department + Standard' :
                                  exam.selectionType === 'subDepartment' ? 'Sub-Department' :
                                  exam.selectionType === 'batch' ? 'Batch' :
                                  exam.selectionType === 'standard' ? 'Standard' : 'Custom'}
@@ -984,6 +997,8 @@ const ExamManagement = () => {
                                   ? `${exam.targetDepartments.length} department(s)`
                                   : exam.selectionType === 'department' && exam.targetDepartment
                                   ? exam.targetDepartment?.name || 'N/A'
+                                  : exam.selectionType === 'departmentStandard' && exam.targetDepartment && exam.targetDepartmentStandard
+                                  ? `${exam.targetDepartment?.name || 'N/A'} - ${exam.targetDepartmentStandard}`
                                   : exam.selectionType === 'subDepartment' && exam.targetSubDepartments?.length > 0
                                   ? exam.targetSubDepartments.map(sd => sd.name || sd).join(', ')
                                   : exam.selectionType === 'batch' && exam.targetBatches?.length > 0
@@ -1240,6 +1255,26 @@ const ExamManagement = () => {
                   </Col>
                   <Col md={6}>
                     <Form.Group className="mb-3">
+                      <Form.Label>Standard</Form.Label>
+                      <Form.Select
+                        name="standard"
+                        value={examFormData.standard}
+                        onChange={handleExamFormChange}
+                      >
+                        <option value="">Select Standard (Optional)</option>
+                        {STANDARD_OPTIONS.map(standard => (
+                          <option key={standard} value={standard}>
+                            {standard}
+                          </option>
+                        ))}
+                      </Form.Select>
+                      <Form.Text className="text-muted">
+                        Select the standard/class level for this exam (for classification only)
+                      </Form.Text>
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
                       <Form.Label>Venue</Form.Label>
                       <Form.Control
                         type="text"
@@ -1277,6 +1312,7 @@ const ExamManagement = () => {
                         required
                       >
                         <option value="department">Entire Department</option>
+                        <option value="departmentStandard">Department + Standard</option>
                         <option value="subDepartment">Sub-Department(s)</option>
                         <option value="batch">Batch(es)</option>
                         <option value="standard">Standard(s)</option>
@@ -1309,6 +1345,50 @@ const ExamManagement = () => {
                         </Form.Text>
                       </Form.Group>
                     </Col>
+                  )}
+
+                  {examFormData.selectionType === 'departmentStandard' && (
+                    <>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label>Department *</Form.Label>
+                          <Form.Select
+                            name="targetDepartment"
+                            value={examFormData.targetDepartment}
+                            onChange={handleExamFormChange}
+                            required
+                          >
+                            <option value="">Select Department</option>
+                            {departments.map(dept => (
+                              <option key={dept._id} value={dept._id}>
+                                {dept.name} ({dept.code})
+                              </option>
+                            ))}
+                          </Form.Select>
+                        </Form.Group>
+                      </Col>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label>Standard *</Form.Label>
+                          <Form.Select
+                            name="targetDepartmentStandard"
+                            value={examFormData.targetDepartmentStandard}
+                            onChange={handleExamFormChange}
+                            required
+                          >
+                            <option value="">Select Standard</option>
+                            {STANDARD_OPTIONS.map(standard => (
+                              <option key={standard} value={standard}>
+                                {standard}
+                              </option>
+                            ))}
+                          </Form.Select>
+                          <Form.Text className="text-muted">
+                            Select one standard. Only students from the selected department with this standard will be included.
+                          </Form.Text>
+                        </Form.Group>
+                      </Col>
+                    </>
                   )}
 
                   {examFormData.selectionType === 'subDepartment' && (

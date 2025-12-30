@@ -144,6 +144,16 @@ export const getAttendanceStatistics = async (classId, params = {}) => {
   }
 };
 
+// Get student's class attendance
+export const getStudentClassAttendance = async (studentId, params = {}) => {
+  try {
+    const response = await api.get(`/class-attendance/student/${studentId}`, { params });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export default {
   getClasses,
   getClass,
@@ -158,5 +168,6 @@ export default {
   getAttendanceSession,
   updateAttendanceSession,
   finalizeAttendanceSession,
-  getAttendanceStatistics
+  getAttendanceStatistics,
+  getStudentClassAttendance
 };

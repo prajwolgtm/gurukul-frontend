@@ -11,6 +11,22 @@ import {
   getBatches, createBatch, updateBatch, deleteBatch
 } from '../api/departments';
 
+// Standard options
+const STANDARD_OPTIONS = [
+  'Pratham 1st Year',
+  'Pratham 2nd Year',
+  'Pratham 3rd Year',
+  'Pravesh 1st Year',
+  'Pravesh 2nd Year',
+  'Moola 1st Year',
+  'Moola 2nd Year',
+  'B.A. 1st Year',
+  'B.A. 2nd Year',
+  'B.A. 3rd Year',
+  'M.A. 1st Year',
+  'M.A. 2nd Year'
+];
+
 const DepartmentManagement = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -35,7 +51,7 @@ const DepartmentManagement = () => {
   });
   const [batchForm, setBatchForm] = useState({ 
     name: '', code: '', department: '', subDepartment: '', 
-    academicYear: '', currentSemester: 1, maxStudents: '', classTeacherId: '' 
+    academicYear: '', standard: '', maxStudents: '', classTeacherId: '' 
   });
   const [selectedBatch, setSelectedBatch] = useState(null);
 
@@ -174,7 +190,7 @@ const DepartmentManagement = () => {
       department: batch.department?._id || batch.department || '',
       subDepartment: subDeptId || '', // Use empty string for null to match form select
       academicYear: batch.academicYear || '',
-      currentSemester: batch.currentSemester || 1,
+      standard: batch.standard || '',
       maxStudents: batch.maxStudents || '',
       classTeacherId: batch.classTeacher?._id || batch.classTeacher || ''
     });
@@ -319,7 +335,7 @@ const DepartmentManagement = () => {
         code: batchForm.code.trim(),
         department: batchForm.department,
         academicYear: batchForm.academicYear.trim(),
-        currentSemester: parseInt(batchForm.currentSemester) || 1,
+        standard: batchForm.standard || undefined,
         maxStudents: batchForm.maxStudents ? parseInt(batchForm.maxStudents) : null // null = unlimited
       };
       
@@ -360,7 +376,7 @@ const DepartmentManagement = () => {
         setSuccess(selectedBatch ? 'Batch updated successfully!' : 'Batch created successfully!');
         await loadBatches(); // Reload batches
         await loadDepartments(); // Reload departments
-        setBatchForm({ name: '', code: '', department: '', subDepartment: '', academicYear: '', currentSemester: 1, maxStudents: '', classTeacherId: '' });
+        setBatchForm({ name: '', code: '', department: '', subDepartment: '', academicYear: '', standard: '', maxStudents: '', classTeacherId: '' });
         setShowBatchModal(false);
         setSelectedBatch(null);
       } else {
@@ -574,7 +590,7 @@ const DepartmentManagement = () => {
               <span>Batches</span>
               {canManageBatches && (
                 <Button variant="primary" size="sm" onClick={() => {
-                  setBatchForm({ name: '', code: '', department: '', subDepartment: '', academicYear: '', currentSemester: 1, maxStudents: '', classTeacherId: '' });
+                  setBatchForm({ name: '', code: '', department: '', subDepartment: '', academicYear: '', standard: '', maxStudents: '', classTeacherId: '' });
                   setSelectedBatch(null);
                   setShowBatchModal(true);
                 }}>
@@ -596,7 +612,7 @@ const DepartmentManagement = () => {
                       <th>Department</th>
                       <th>Sub-Dept</th>
                       <th>Academic Year</th>
-                      <th>Semester</th>
+                      <th>Standard</th>
                       <th>Students</th>
                       <th>Class Teacher</th>
                       <th>Actions</th>
@@ -626,7 +642,7 @@ const DepartmentManagement = () => {
                           )}
                         </td>
                         <td>{batch.academicYear}</td>
-                        <td><Badge bg="info">{batch.currentSemester || 1}</Badge></td>
+                        <td><Badge bg="info">{batch.standard || 'N/A'}</Badge></td>
                         <td>
                           <Badge bg="info">
                             {batch.currentStudentCount || 0} {batch.maxStudents ? `/ ${batch.maxStudents}` : '(Unlimited)'}
@@ -863,7 +879,7 @@ const DepartmentManagement = () => {
       {/* Batch Modal */}
       <Modal show={showBatchModal} onHide={() => { 
         setShowBatchModal(false); 
-        setBatchForm({ name: '', code: '', department: '', subDepartment: '', academicYear: '', currentSemester: 1, maxStudents: '', classTeacherId: '' }); 
+        setBatchForm({ name: '', code: '', department: '', subDepartment: '', academicYear: '', standard: '', maxStudents: '', classTeacherId: '' }); 
         setSelectedBatch(null);
       }}>
         <Modal.Header closeButton>
@@ -984,14 +1000,22 @@ const DepartmentManagement = () => {
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Current Semester</Form.Label>
-                  <Form.Control
-                    type="number"
-                    min="1"
-                    max="8"
-                    value={batchForm.currentSemester}
-                    onChange={(e) => setBatchForm({...batchForm, currentSemester: parseInt(e.target.value) || 1})}
-                  />
+                  <Form.Label>Standard</Form.Label>
+                  <Form.Select
+                    name="standard"
+                    value={batchForm.standard}
+                    onChange={(e) => setBatchForm({...batchForm, standard: e.target.value})}
+                  >
+                    <option value="">Select Standard (Optional)</option>
+                    {STANDARD_OPTIONS.map(standard => (
+                      <option key={standard} value={standard}>
+                        {standard}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Text className="text-muted">
+                    Select the standard/class level for this batch (for classification only)
+                  </Form.Text>
                 </Form.Group>
               </Col>
             </Row>
@@ -1010,7 +1034,7 @@ const DepartmentManagement = () => {
           <Modal.Footer>
             <Button variant="secondary" onClick={() => { 
               setShowBatchModal(false); 
-              setBatchForm({ name: '', code: '', department: '', subDepartment: '', academicYear: '', currentSemester: 1, maxStudents: '', classTeacherId: '' }); 
+              setBatchForm({ name: '', code: '', department: '', subDepartment: '', academicYear: '', standard: '', maxStudents: '', classTeacherId: '' }); 
               setSelectedBatch(null);
             }}>
               Cancel

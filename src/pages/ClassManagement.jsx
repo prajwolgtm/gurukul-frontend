@@ -9,7 +9,25 @@ import api from '../api/client';
 import { examsAPI } from '../api/exams';
 import academicAPI from '../api/academic';
 import { getCurrentAcademicYear, getAcademicYearList } from '../api/academicYear';
+import studentsAPI from '../api/students';
+import classesAPI from '../api/classes';
 // Removed old attendance imports - using simplified API
+
+// Standard options
+const STANDARD_OPTIONS = [
+  'Pratham 1st Year',
+  'Pratham 2nd Year',
+  'Pratham 3rd Year',
+  'Pravesh 1st Year',
+  'Pravesh 2nd Year',
+  'Moola 1st Year',
+  'Moola 2nd Year',
+  'B.A. 1st Year',
+  'B.A. 2nd Year',
+  'B.A. 3rd Year',
+  'M.A. 1st Year',
+  'M.A. 2nd Year'
+];
 
 const ClassManagement = () => {
   const { user } = useAuth();
@@ -42,6 +60,15 @@ const ClassManagement = () => {
   const [students, setStudents] = useState([]);
   const [subjects, setSubjects] = useState([]);
   
+  // Subject form data
+  const [subjectFormData, setSubjectFormData] = useState({
+    name: '',
+    code: '',
+    description: '',
+    category: 'theory',
+    credits: 1
+  });
+  
   // Student selection - exactly like exam management
 
   // Modals
@@ -49,6 +76,22 @@ const ClassManagement = () => {
   const [showEditClass, setShowEditClass] = useState(false);
   const [showClassDetails, setShowClassDetails] = useState(false);
   const [showMarkAttendance, setShowMarkAttendance] = useState(false);
+  const [showSubjectModal, setShowSubjectModal] = useState(false);
+  const [showSubjectsListModal, setShowSubjectsListModal] = useState(false);
+  
+  // Attendance report modals
+  const [showPerClassReportModal, setShowPerClassReportModal] = useState(false);
+  const [showAllClassesDateReportModal, setShowAllClassesDateReportModal] = useState(false);
+  const [showStudentClassReportModal, setShowStudentClassReportModal] = useState(false);
+  
+  // Attendance report data
+  const [perClassReportData, setPerClassReportData] = useState(null);
+  const [allClassesDateReportData, setAllClassesDateReportData] = useState(null);
+  const [studentClassReportData, setStudentClassReportData] = useState(null);
+  const [selectedReportClass, setSelectedReportClass] = useState('');
+  const [selectedReportDate, setSelectedReportDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedReportStudent, setSelectedReportStudent] = useState('');
+  const [reportDateRange, setReportDateRange] = useState({ startDate: '', endDate: '' });
   
   // Simplified attendance marking state
   const [classStudents, setClassStudents] = useState([]);
@@ -81,11 +124,16 @@ const ClassManagement = () => {
     },
     academicInfo: {
       academicYear: '',
-      semester: 1,
+      standard: '',
       term: 'annual'
     },
     classTeacher: ''
   });
+
+  // Check permissions (matching ExamManagement)
+  const canManage = user?.role !== ROLES.PARENT;
+  const canCreate = user?.role !== ROLES.PARENT;
+  const canDelete = [ROLES.ADMIN, ROLES.COORDINATOR].includes(user?.role);
 
   useEffect(() => {
     const initialize = async () => {
@@ -201,6 +249,21 @@ const ClassManagement = () => {
         console.warn('⚠️ Could not load teachers:', teacherError.message);
         // Don't fail the whole page if teachers can't be loaded
         setTeachers([]);
+      }
+
+      // Load students for attendance reports
+      try {
+        const studentsRes = await studentsAPI.getStudents({ 
+          status: 'active', 
+          limit: 1000,
+          page: 1 
+        });
+        if (studentsRes.success) {
+          setStudents(studentsRes.students || studentsRes.data?.students || []);
+        }
+      } catch (studentError) {
+        console.warn('⚠️ Could not load students:', studentError.message);
+        setStudents([]);
       }
     } catch (error) {
       console.error('❌ Error loading initial data:', error);
@@ -425,6 +488,151 @@ const ClassManagement = () => {
     }
   };
 
+  // Subject handlers
+  const handleSubjectFormChange = (e) => {
+    const { name, value } = e.target;
+    setSubjectFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const resetSubjectForm = () => {
+    setSubjectFormData({
+      name: '',
+      code: '',
+      description: '',
+      category: 'theory',
+      credits: 1
+    });
+  };
+
+  const handleSubjectSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      setLoading(true);
+      await examsAPI.createSubject(subjectFormData);
+      setSuccess('Subject created successfully!');
+      setShowSubjectModal(false);
+      resetSubjectForm();
+      
+      // Reload subjects
+      const response = await examsAPI.getSubjects();
+      setSubjects(response.subjects || []);
+    } catch (error) {
+      console.error('❌ Error creating subject:', error);
+      setError(error.response?.data?.message || 'Error creating subject');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteSubject = async (subjectId) => {
+    if (!window.confirm('Are you sure you want to delete this subject? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await examsAPI.deleteSubject(subjectId);
+      setSuccess('Subject deleted successfully!');
+      
+      // Reload all subjects (including inactive) for the subjects list modal
+      const allSubjectsResponse = await examsAPI.getSubjects({ includeInactive: true });
+      setSubjects(allSubjectsResponse.subjects || []);
+    } catch (error) {
+      console.error('❌ Error deleting subject:', error);
+      setError(error.response?.data?.message || 'Error deleting subject');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Attendance Report Handlers
+  const loadPerClassAttendanceReport = async () => {
+    if (!selectedReportClass) {
+      setError('Please select a class');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await classesAPI.getClassAttendanceSessions(selectedReportClass, {
+        startDate: reportDateRange.startDate,
+        endDate: reportDateRange.endDate
+      });
+      setPerClassReportData(response);
+      setShowPerClassReportModal(true);
+    } catch (error) {
+      console.error('❌ Error loading per class attendance:', error);
+      setError(error.response?.data?.message || 'Error loading attendance report');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAllClassesDateReport = async () => {
+    if (!selectedReportDate) {
+      setError('Please select a date');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // Fetch attendance for all classes on the selected date
+      const promises = classes.map(async (classItem) => {
+        try {
+          const response = await classesAPI.getClassAttendanceSessions(classItem._id, {
+            startDate: selectedReportDate,
+            endDate: selectedReportDate
+          });
+          return { class: classItem, attendance: response };
+        } catch (error) {
+          console.error(`Error loading attendance for class ${classItem._id}:`, error);
+          return { class: classItem, attendance: null };
+        }
+      });
+      
+      const results = await Promise.all(promises);
+      setAllClassesDateReportData(results.filter(r => r.attendance));
+      setShowAllClassesDateReportModal(true);
+    } catch (error) {
+      console.error('❌ Error loading all classes attendance:', error);
+      setError(error.response?.data?.message || 'Error loading attendance report');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStudentClassAttendanceReport = async () => {
+    if (!selectedReportStudent) {
+      setError('Please select a student');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const params = {
+        startDate: reportDateRange.startDate,
+        endDate: reportDateRange.endDate
+      };
+      
+      if (selectedStudentReportClass) {
+        params.classId = selectedStudentReportClass;
+      }
+
+      const response = await classesAPI.getStudentClassAttendance(selectedReportStudent, params);
+      setStudentClassReportData(response);
+      setShowStudentClassReportModal(true);
+    } catch (error) {
+      console.error('❌ Error loading student class attendance:', error);
+      setError(error.response?.data?.message || 'Error loading attendance report');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDeleteClass = async (classId) => {
     if (!window.confirm('Are you sure you want to delete this class?')) return;
     
@@ -465,7 +673,7 @@ const ClassManagement = () => {
       },
       academicInfo: {
         academicYear: '2024-2025',
-        semester: 1,
+        standard: '',
         term: 'annual'
       },
       classTeacher: ''
@@ -503,7 +711,7 @@ const ClassManagement = () => {
       },
       academicInfo: classData.academicInfo || {
         academicYear: '2024-2025',
-        semester: 1,
+        standard: '',
         term: 'annual'
       },
       classTeacher: classData.classTeacher?._id || classData.classTeacher || ''
@@ -654,11 +862,48 @@ const ClassManagement = () => {
           <p className="text-muted">Manage classes, assignments, and schedules</p>
         </Col>
         <Col xs="auto">
-          {(user?.role === ROLES.ADMIN || user?.role === ROLES.PRINCIPAL || user?.role === ROLES.HOD) && (
-            <Button variant="primary" onClick={() => setShowCreateClass(true)}>
-              Create New Class
-            </Button>
-          )}
+          <div className="d-flex gap-2">
+            {/* View Subjects - Available to all users who can manage classes */}
+            {canManage && (
+              <Button 
+                variant="outline-info" 
+                onClick={async () => {
+                  setShowSubjectsListModal(true);
+                  // Load all subjects (including inactive) when opening the modal
+                  try {
+                    setLoading(true);
+                    const response = await examsAPI.getSubjects({ includeInactive: true });
+                    setSubjects(response.subjects || []);
+                  } catch (error) {
+                    console.error('Error loading subjects:', error);
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                className="me-2"
+              >
+                📋 View Subjects
+              </Button>
+            )}
+            {/* Add Subject - Available to admins and coordinators */}
+            {canCreate && (
+              <Button 
+                variant="outline-primary" 
+                onClick={() => { resetSubjectForm(); setShowSubjectModal(true); }}
+                disabled={loading}
+                className="me-2"
+              >
+                ➕ Add Subject
+              </Button>
+            )}
+            {/* Create Class - Available to admins, principals, and HODs */}
+            {(user?.role === ROLES.ADMIN || user?.role === ROLES.PRINCIPAL || user?.role === ROLES.HOD) && (
+              <Button variant="primary" onClick={() => setShowCreateClass(true)}>
+                Create New Class
+              </Button>
+            )}
+          </div>
         </Col>
       </Row>
 
@@ -865,6 +1110,163 @@ const ClassManagement = () => {
             </Card.Body>
           </Card>
         </Tab>
+
+        <Tab eventKey="attendance-reports" title="📊 Attendance Reports">
+          <Card>
+            <Card.Header>
+              <h5 className="mb-0">Class Attendance Reports</h5>
+            </Card.Header>
+            <Card.Body>
+              <Row className="g-3">
+                {/* Per Class Attendance Report */}
+                <Col md={6}>
+                  <Card className="h-100" style={{ border: '2px solid #0d6efd' }}>
+                    <Card.Body>
+                      <h6 className="mb-3">📋 Per Class Attendance Report</h6>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Select Class *</Form.Label>
+                        <Form.Select
+                          value={selectedReportClass}
+                          onChange={(e) => setSelectedReportClass(e.target.value)}
+                        >
+                          <option value="">Select a class</option>
+                          {classes.map(classItem => (
+                            <option key={classItem._id} value={classItem._id}>
+                              {classItem.className} - {classItem.subject?.name || 'N/A'}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      </Form.Group>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Start Date</Form.Label>
+                        <Form.Control
+                          type="date"
+                          value={reportDateRange.startDate}
+                          onChange={(e) => setReportDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                        />
+                      </Form.Group>
+                      <Form.Group className="mb-3">
+                        <Form.Label>End Date</Form.Label>
+                        <Form.Control
+                          type="date"
+                          value={reportDateRange.endDate}
+                          onChange={(e) => setReportDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                        />
+                      </Form.Group>
+                      <Button
+                        variant="primary"
+                        onClick={loadPerClassAttendanceReport}
+                        disabled={loading || !selectedReportClass}
+                        className="w-100"
+                      >
+                        {loading ? <Spinner animation="border" size="sm" /> : '📊 Generate Report'}
+                      </Button>
+                    </Card.Body>
+                  </Card>
+                </Col>
+
+                {/* All Classes Attendance by Date */}
+                <Col md={6}>
+                  <Card className="h-100" style={{ border: '2px solid #28a745' }}>
+                    <Card.Body>
+                      <h6 className="mb-3">📅 All Classes Attendance by Date</h6>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Select Date *</Form.Label>
+                        <Form.Control
+                          type="date"
+                          value={selectedReportDate}
+                          onChange={(e) => setSelectedReportDate(e.target.value)}
+                        />
+                      </Form.Group>
+                      <p className="text-muted small">
+                        View attendance for all classes on a specific date
+                      </p>
+                      <Button
+                        variant="success"
+                        onClick={loadAllClassesDateReport}
+                        disabled={loading || !selectedReportDate}
+                        className="w-100"
+                      >
+                        {loading ? <Spinner animation="border" size="sm" /> : '📅 Generate Report'}
+                      </Button>
+                    </Card.Body>
+                  </Card>
+                </Col>
+
+                {/* Per Student Class Attendance Report */}
+                <Col md={12}>
+                  <Card className="h-100" style={{ border: '2px solid #ffc107' }}>
+                    <Card.Body>
+                      <h6 className="mb-3">👤 Per Student Class Attendance Report</h6>
+                      <Row>
+                        <Col md={4}>
+                          <Form.Group className="mb-3">
+                            <Form.Label>Select Student *</Form.Label>
+                            <Form.Select
+                              value={selectedReportStudent}
+                              onChange={(e) => setSelectedReportStudent(e.target.value)}
+                            >
+                              <option value="">Select a student</option>
+                              {students.map(student => (
+                                <option key={student._id} value={student._id}>
+                                  {student.fullName} ({student.admissionNo})
+                                </option>
+                              ))}
+                            </Form.Select>
+                          </Form.Group>
+                        </Col>
+                        <Col md={4}>
+                          <Form.Group className="mb-3">
+                            <Form.Label>Select Class (Optional)</Form.Label>
+                            <Form.Select
+                              value={selectedStudentReportClass}
+                              onChange={(e) => setSelectedStudentReportClass(e.target.value)}
+                            >
+                              <option value="">All Classes</option>
+                              {classes.map(classItem => (
+                                <option key={classItem._id} value={classItem._id}>
+                                  {classItem.className} - {classItem.subject?.name || 'N/A'}
+                                </option>
+                              ))}
+                            </Form.Select>
+                          </Form.Group>
+                        </Col>
+                        <Col md={2}>
+                          <Form.Group className="mb-3">
+                            <Form.Label>Start Date</Form.Label>
+                            <Form.Control
+                              type="date"
+                              value={reportDateRange.startDate}
+                              onChange={(e) => setReportDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                            />
+                          </Form.Group>
+                        </Col>
+                        <Col md={2}>
+                          <Form.Group className="mb-3">
+                            <Form.Label>End Date</Form.Label>
+                            <Form.Control
+                              type="date"
+                              value={reportDateRange.endDate}
+                              onChange={(e) => setReportDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                            />
+                          </Form.Group>
+                        </Col>
+                      </Row>
+                      <Button
+                        variant="warning"
+                        onClick={loadStudentClassAttendanceReport}
+                        disabled={loading || !selectedReportStudent}
+                        className="w-100"
+                      >
+                        {loading ? <Spinner animation="border" size="sm" /> : '👤 Generate Report'}
+                      </Button>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              </Row>
+            </Card.Body>
+          </Card>
+        </Tab>
       </Tabs>
 
       {/* Create Class Modal */}
@@ -970,14 +1372,18 @@ const ClassManagement = () => {
               </Col>
               <Col md={4}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Semester</Form.Label>
+                  <Form.Label>Standard</Form.Label>
                   <Form.Select
-                    name="academicInfo.semester"
-                    value={classForm.academicInfo.semester}
+                    name="academicInfo.standard"
+                    value={classForm.academicInfo.standard}
                     onChange={handleClassFormChange}
                   >
-                    <option value={1}>Semester 1</option>
-                    <option value={2}>Semester 2</option>
+                    <option value="">Select Standard (Optional)</option>
+                    {STANDARD_OPTIONS.map(standard => (
+                      <option key={standard} value={standard}>
+                        {standard}
+                      </option>
+                    ))}
                   </Form.Select>
                 </Form.Group>
               </Col>
@@ -1379,14 +1785,18 @@ const ClassManagement = () => {
             </Col>
               <Col md={4}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Semester</Form.Label>
+                  <Form.Label>Standard</Form.Label>
               <Form.Select
-                    name="academicInfo.semester"
-                    value={classForm.academicInfo.semester}
+                    name="academicInfo.standard"
+                    value={classForm.academicInfo.standard}
                     onChange={handleClassFormChange}
                   >
-                    <option value={1}>Semester 1</option>
-                    <option value={2}>Semester 2</option>
+                    <option value="">Select Standard (Optional)</option>
+                    {STANDARD_OPTIONS.map(standard => (
+                      <option key={standard} value={standard}>
+                        {standard}
+                      </option>
+                  ))}
               </Form.Select>
                 </Form.Group>
             </Col>
@@ -2013,6 +2423,420 @@ const ClassManagement = () => {
             </Button>
           </Modal.Footer>
         </Form>
+      </Modal>
+
+      {/* Create Subject Modal */}
+      <Modal show={showSubjectModal} onHide={() => setShowSubjectModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>➕ Add New Subject</Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleSubjectSubmit}>
+          <Modal.Body>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Subject Name *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="name"
+                    value={subjectFormData.name}
+                    onChange={handleSubjectFormChange}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Subject Code *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="code"
+                    value={subjectFormData.code}
+                    onChange={handleSubjectFormChange}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Category</Form.Label>
+                  <Form.Select
+                    name="category"
+                    value={subjectFormData.category}
+                    onChange={handleSubjectFormChange}
+                  >
+                    <option value="theory">Theory</option>
+                    <option value="practical">Practical</option>
+                    <option value="core">Core</option>
+                    <option value="elective">Elective</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Credits</Form.Label>
+                  <Form.Control
+                    type="number"
+                    name="credits"
+                    value={subjectFormData.credits}
+                    onChange={handleSubjectFormChange}
+                    min="1"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={12}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Description</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    name="description"
+                    value={subjectFormData.description}
+                    onChange={handleSubjectFormChange}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowSubjectModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" disabled={loading}>
+              {loading ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  Creating...
+                </>
+              ) : (
+                'Create Subject'
+              )}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* View Subjects Modal */}
+      <Modal show={showSubjectsListModal} onHide={() => setShowSubjectsListModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>📚 All Subjects</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {loading && (
+            <div className="text-center py-4">
+              <Spinner animation="border" variant="primary" />
+            </div>
+          )}
+          {!loading && subjects.length === 0 ? (
+            <div className="text-center py-4">
+              <p className="text-muted">No subjects found. Create your first subject!</p>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <Table striped hover>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th>Category</th>
+                    <th>Credits</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subjects.map(subject => (
+                    <tr key={subject._id} className={!subject.isActive ? 'opacity-50' : ''}>
+                      <td>
+                        {subject.name}
+                        {!subject.isActive && (
+                          <Badge bg="secondary" className="ms-2">Inactive</Badge>
+                        )}
+                      </td>
+                      <td>
+                        <Badge bg="info">{subject.code}</Badge>
+                      </td>
+                      <td>
+                        <Badge bg="secondary">{subject.category || 'N/A'}</Badge>
+                      </td>
+                      <td>{subject.credits || 'N/A'}</td>
+                      <td>
+                        {canDelete && subject.isActive && (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => handleDeleteSubject(subject._id)}
+                            disabled={loading}
+                          >
+                            🗑️ Delete
+                          </Button>
+                        )}
+                        {!subject.isActive && (
+                          <span className="text-muted text-sm">Deleted</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowSubjectsListModal(false)}>
+            Close
+          </Button>
+          {canCreate && (
+            <Button 
+              variant="primary" 
+              onClick={() => {
+                setShowSubjectsListModal(false);
+                resetSubjectForm();
+                setShowSubjectModal(true);
+              }}
+            >
+              ➕ Add New Subject
+            </Button>
+          )}
+        </Modal.Footer>
+      </Modal>
+
+      {/* Per Class Attendance Report Modal */}
+      <Modal show={showPerClassReportModal} onHide={() => setShowPerClassReportModal(false)} size="xl">
+        <Modal.Header closeButton>
+          <Modal.Title>📋 Per Class Attendance Report</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {loading ? (
+            <div className="text-center py-4">
+              <Spinner animation="border" variant="primary" />
+            </div>
+          ) : perClassReportData ? (
+            <div>
+              <h6 className="mb-3">
+                {classes.find(c => c._id === selectedReportClass)?.className || 'Class'} - 
+                {reportDateRange.startDate && reportDateRange.endDate 
+                  ? ` ${reportDateRange.startDate} to ${reportDateRange.endDate}`
+                  : reportDateRange.startDate 
+                  ? ` ${reportDateRange.startDate}`
+                  : ' All Time'}
+              </h6>
+              {perClassReportData.data?.sessions?.length > 0 ? (
+                <div className="table-responsive">
+                  <Table striped hover>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Total Students</th>
+                        <th>Present</th>
+                        <th>Absent</th>
+                        <th>Late</th>
+                        <th>Attendance %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {perClassReportData.data.sessions.map((session, idx) => {
+                        const presentCount = session.attendance?.filter(a => a.status === 'present').length || 0;
+                        const absentCount = session.attendance?.filter(a => a.status === 'absent').length || 0;
+                        const lateCount = session.attendance?.filter(a => a.status === 'late').length || 0;
+                        const total = session.attendance?.length || 0;
+                        const attendancePercent = total > 0 ? Math.round(((presentCount + lateCount) / total) * 100) : 0;
+                        
+                        return (
+                          <tr key={session._id || idx}>
+                            <td>{new Date(session.sessionDate).toLocaleDateString()}</td>
+                            <td><Badge bg={session.sessionStatus === 'completed' ? 'success' : 'warning'}>{session.sessionStatus}</Badge></td>
+                            <td>{total}</td>
+                            <td><Badge bg="success">{presentCount}</Badge></td>
+                            <td><Badge bg="danger">{absentCount}</Badge></td>
+                            <td><Badge bg="warning">{lateCount}</Badge></td>
+                            <td><Badge bg={attendancePercent >= 75 ? 'success' : attendancePercent >= 50 ? 'warning' : 'danger'}>{attendancePercent}%</Badge></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-muted">No attendance records found for the selected period.</p>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowPerClassReportModal(false)}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* All Classes Attendance by Date Modal */}
+      <Modal show={showAllClassesDateReportModal} onHide={() => setShowAllClassesDateReportModal(false)} size="xl">
+        <Modal.Header closeButton>
+          <Modal.Title>📅 All Classes Attendance - {selectedReportDate}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {loading ? (
+            <div className="text-center py-4">
+              <Spinner animation="border" variant="primary" />
+            </div>
+          ) : allClassesDateReportData && allClassesDateReportData.length > 0 ? (
+            <div className="table-responsive">
+              <Table striped hover>
+                <thead>
+                  <tr>
+                    <th>Class Name</th>
+                    <th>Subject</th>
+                    <th>Sessions</th>
+                    <th>Total Students</th>
+                    <th>Avg Attendance %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allClassesDateReportData.map((item, idx) => {
+                    const sessions = item.attendance?.data?.sessions || [];
+                    let totalStudents = 0;
+                    let totalPresent = 0;
+                    
+                    sessions.forEach(session => {
+                      const present = session.attendance?.filter(a => a.status === 'present' || a.status === 'late').length || 0;
+                      const total = session.attendance?.length || 0;
+                      totalStudents += total;
+                      totalPresent += present;
+                    });
+                    
+                    const avgAttendance = totalStudents > 0 ? Math.round((totalPresent / totalStudents) * 100) : 0;
+                    
+                    return (
+                      <tr key={item.class._id || idx}>
+                        <td>{item.class.className}</td>
+                        <td>{item.class.subject?.name || 'N/A'}</td>
+                        <td><Badge bg="info">{sessions.length}</Badge></td>
+                        <td>{totalStudents}</td>
+                        <td>
+                          <Badge bg={avgAttendance >= 75 ? 'success' : avgAttendance >= 50 ? 'warning' : 'danger'}>
+                            {avgAttendance}%
+                          </Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-muted">No attendance records found for the selected date.</p>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowAllClassesDateReportModal(false)}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Per Student Class Attendance Report Modal */}
+      <Modal show={showStudentClassReportModal} onHide={() => setShowStudentClassReportModal(false)} size="xl">
+        <Modal.Header closeButton>
+          <Modal.Title>👤 Student Class Attendance Report</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {loading ? (
+            <div className="text-center py-4">
+              <Spinner animation="border" variant="primary" />
+            </div>
+          ) : studentClassReportData ? (
+            <div>
+              <h6 className="mb-3">
+                {students.find(s => s._id === selectedReportStudent)?.fullName || 'Student'} - 
+                {selectedStudentReportClass 
+                  ? ` ${classes.find(c => c._id === selectedStudentReportClass)?.className || 'Selected Class'}`
+                  : ' All Classes'}
+                {reportDateRange.startDate && reportDateRange.endDate 
+                  ? ` (${reportDateRange.startDate} to ${reportDateRange.endDate})`
+                  : ''}
+              </h6>
+              {studentClassReportData.data?.attendanceRecords?.length > 0 ? (
+                <>
+                  {studentClassReportData.data.statistics && (
+                    <Card className="mb-3">
+                      <Card.Body>
+                        <Row>
+                          <Col md={3}>
+                            <strong>Total Sessions:</strong> {studentClassReportData.data.statistics.totalSessions || 0}
+                          </Col>
+                          <Col md={3}>
+                            <strong>Present:</strong> <Badge bg="success">{studentClassReportData.data.statistics.presentCount || 0}</Badge>
+                          </Col>
+                          <Col md={3}>
+                            <strong>Absent:</strong> <Badge bg="danger">{studentClassReportData.data.statistics.absentCount || 0}</Badge>
+                          </Col>
+                          <Col md={3}>
+                            <strong>Attendance %:</strong> 
+                            <Badge bg={studentClassReportData.data.statistics.attendancePercentage >= 75 ? 'success' : studentClassReportData.data.statistics.attendancePercentage >= 50 ? 'warning' : 'danger'}>
+                              {studentClassReportData.data.statistics.attendancePercentage || 0}%
+                            </Badge>
+                          </Col>
+                        </Row>
+                      </Card.Body>
+                    </Card>
+                  )}
+                  <div className="table-responsive">
+                    <Table striped hover>
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Class</th>
+                          <th>Subject</th>
+                          <th>Status</th>
+                          <th>Conducted By</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {studentClassReportData.data.attendanceRecords.map((record, idx) => {
+                          const studentAttendance = record.attendance?.find(a => 
+                            a.student?.toString() === selectedReportStudent || a.student?._id?.toString() === selectedReportStudent
+                          );
+                          
+                          return (
+                            <tr key={record._id || idx}>
+                              <td>{new Date(record.sessionDate).toLocaleDateString()}</td>
+                              <td>{record.subjectClass?.className || 'N/A'}</td>
+                              <td>{record.subjectClass?.subject?.name || 'N/A'}</td>
+                              <td>
+                                <Badge bg={
+                                  studentAttendance?.status === 'present' ? 'success' :
+                                  studentAttendance?.status === 'late' ? 'warning' :
+                                  studentAttendance?.status === 'absent' ? 'danger' : 'secondary'
+                                }>
+                                  {studentAttendance?.status || 'N/A'}
+                                </Badge>
+                              </td>
+                              <td>{record.conductedBy?.fullName || 'N/A'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </Table>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-muted">No attendance records found for the selected student and period.</p>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowStudentClassReportModal(false)}>
+            Close
+          </Button>
+        </Modal.Footer>
       </Modal>
     </Container>
   );
