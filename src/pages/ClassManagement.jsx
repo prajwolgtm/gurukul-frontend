@@ -91,6 +91,7 @@ const ClassManagement = () => {
   const [selectedReportClass, setSelectedReportClass] = useState('');
   const [selectedReportDate, setSelectedReportDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedReportStudent, setSelectedReportStudent] = useState('');
+  const [selectedStudentReportClass, setSelectedStudentReportClass] = useState(''); // Separate for student report
   const [reportDateRange, setReportDateRange] = useState({ startDate: '', endDate: '' });
   
   // Simplified attendance marking state
@@ -2197,6 +2198,7 @@ const ClassManagement = () => {
                       // Check if attendance already exists for this date
                       if (selectedDate && selectedClass?._id) {
                         try {
+                          console.log('🔍 Checking for existing attendance on date:', selectedDate);
                           const checkResponse = await api.get(`/class-attendance/class/${selectedClass._id}`, {
                             params: {
                               startDate: selectedDate,
@@ -2204,9 +2206,15 @@ const ClassManagement = () => {
                               limit: 1
                             }
                           });
+                          console.log('📡 API Response:', checkResponse.data);
                           
                           if (checkResponse.data.success && checkResponse.data.data?.attendance?.length > 0) {
                             const existing = checkResponse.data.data.attendance[0];
+                            console.log('🔍 ===== LOADING EXISTING ATTENDANCE (FRONTEND) =====');
+                            console.log('📅 Date:', selectedDate);
+                            console.log('📊 Existing record:', existing);
+                            console.log('👥 Students in existing record:', existing.attendance?.length || 0);
+                            
                             setExistingAttendance(existing);
                             setIsEditingAttendance(true);
                             
@@ -2216,19 +2224,30 @@ const ClassManagement = () => {
                               // Load student attendance
                               const existingAttendanceData = {};
                               if (existing.attendance && existing.attendance.length > 0) {
+                                console.log('📝 Loading attendance statuses:');
                                 existing.attendance.forEach(att => {
                                   const studentId = att.student?._id || att.student;
                                   if (studentId) {
                                     existingAttendanceData[studentId] = att.status || 'absent';
+                                    console.log(`  - Student ${att.student?.fullName || studentId}: ${att.status}`);
                                   }
                                 });
                               }
+                              console.log('📊 Loaded attendance data:', existingAttendanceData);
+                              console.log('📊 Status counts:', {
+                                present: Object.values(existingAttendanceData).filter(s => s === 'present').length,
+                                absent: Object.values(existingAttendanceData).filter(s => s === 'absent').length,
+                                late: Object.values(existingAttendanceData).filter(s => s === 'late').length
+                              });
+                              
                               // Fill in missing students as absent
                               classStudents.forEach(student => {
                                 if (!existingAttendanceData[student._id]) {
                                   existingAttendanceData[student._id] = 'absent';
+                                  console.log(`  - Student ${student.fullName} (${student._id}) not in existing data, setting to absent`);
                                 }
                               });
+                              console.log('📊 Final attendance data after filling missing:', existingAttendanceData);
                               setAttendanceData(existingAttendanceData);
                             } else if (existing.sessionStatus === 'teacher-leave') {
                               setAttendanceType('teacher-leave');
