@@ -181,12 +181,37 @@ const TeacherManagement = () => {
           [field]: value
         }
       }));
+    } else if (name.startsWith('educationalBackground.')) {
+      const field = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        educationalBackground: {
+          ...prev.educationalBackground,
+          [field]: value
+        }
+      }));
+    } else if (name.startsWith('bankDetails.')) {
+      const field = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        bankDetails: {
+          ...prev.bankDetails,
+          [field]: value
+        }
+      }));
     } else if (name === 'subjects') {
       // Handle subjects as comma-separated values
       const subjectsArray = value.split(',').map(s => s.trim()).filter(s => s);
       setFormData(prev => ({
         ...prev,
         subjects: subjectsArray
+      }));
+    } else if (name === 'languages') {
+      // Handle languages as comma-separated values
+      const languagesArray = value.split(',').map(s => s.trim()).filter(s => s);
+      setFormData(prev => ({
+        ...prev,
+        languages: languagesArray
       }));
     } else {
       setFormData(prev => ({
@@ -270,13 +295,36 @@ const TeacherManagement = () => {
       phone: teacher.user?.phone || '',
       password: '', // Don't populate password for security
       employeeId: teacher.employeeId || '',
+      motherName: teacher.motherName || '',
+      spouseName: teacher.spouseName || '',
+      dateOfBirth: teacher.dateOfBirth ? teacher.dateOfBirth.split('T')[0] : '',
+      religion: teacher.religion || '',
+      category: teacher.category || '',
+      nationality: teacher.nationality || 'Indian',
+      languages: Array.isArray(teacher.languages) ? teacher.languages : [],
       qualification: teacher.qualification || '',
       specialization: teacher.specialization || '',
+      veda: teacher.veda || '',
+      shakha: teacher.shakha || '',
+      educationalBackground: {
+        moolanta: teacher.educationalBackground?.moolanta || '',
+        kramanta: teacher.educationalBackground?.kramanta || '',
+        ghananta: teacher.educationalBackground?.ghananta || ''
+      },
       experience: teacher.experience || '',
       joiningDate: teacher.joiningDate ? teacher.joiningDate.split('T')[0] : '',
-      subjects: teacher.subjects || [],
+      subjects: Array.isArray(teacher.subjects) ? teacher.subjects : [],
+      permanentAddress: teacher.permanentAddress || '',
       address: teacher.address || '',
       emergencyContact: teacher.emergencyContact || { name: '', phone: '', relation: '' },
+      aadhaarNumber: teacher.aadhaarNumber || '',
+      panNumber: teacher.panNumber || '',
+      bankDetails: {
+        bankName: teacher.bankDetails?.bankName || '',
+        bankAddress: teacher.bankDetails?.bankAddress || '',
+        accountNumber: teacher.bankDetails?.accountNumber || '',
+        ifscCode: teacher.bankDetails?.ifscCode || ''
+      },
       remarks: teacher.remarks || ''
     });
     setShowModal(true);
@@ -344,13 +392,27 @@ const TeacherManagement = () => {
       phone: '',
       password: '',
       employeeId: '',
+      motherName: '',
+      spouseName: '',
+      dateOfBirth: '',
+      religion: '',
+      category: '',
+      nationality: 'Indian',
+      languages: [],
       qualification: '',
       specialization: '',
+      veda: '',
+      shakha: '',
+      educationalBackground: { moolanta: '', kramanta: '', ghananta: '' },
       experience: '',
       joiningDate: '',
       subjects: [],
+      permanentAddress: '',
       address: '',
       emergencyContact: { name: '', phone: '', relation: '' },
+      aadhaarNumber: '',
+      panNumber: '',
+      bankDetails: { bankName: '', bankAddress: '', accountNumber: '', ifscCode: '' },
       remarks: ''
     });
     setEditingTeacher(null);
@@ -775,11 +837,95 @@ const TeacherManagement = () => {
                       />
                     </Form.Group>
                   </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Date of Birth</Form.Label>
+                      <Form.Control
+                        type="date"
+                        name="dateOfBirth"
+                        value={formData.dateOfBirth}
+                        onChange={handleFormChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Mother's Name</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="motherName"
+                        value={formData.motherName}
+                        onChange={handleFormChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Spouse's Name</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="spouseName"
+                        value={formData.spouseName}
+                        onChange={handleFormChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Religion</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="religion"
+                        value={formData.religion}
+                        onChange={handleFormChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Category</Form.Label>
+                      <Form.Select
+                        name="category"
+                        value={formData.category}
+                        onChange={handleFormChange}
+                      >
+                        <option value="">Select Category</option>
+                        <option value="General">General</option>
+                        <option value="OBC">OBC</option>
+                        <option value="SC">SC</option>
+                        <option value="ST">ST</option>
+                        <option value="EWS">EWS</option>
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Nationality</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="nationality"
+                        value={formData.nationality}
+                        onChange={handleFormChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={12}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Languages (comma-separated)</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="languages"
+                        value={(formData.languages || []).join(', ')}
+                        onChange={handleFormChange}
+                        placeholder="e.g. Telugu, Samskrit, Hindi"
+                      />
+                    </Form.Group>
+                  </Col>
                 </Row>
               </Tab>
 
               {/* Professional Information Tab */}
-              <Tab eventKey="professional" title="🎓 Professional Info">
+              <Tab eventKey="professional" title="🎓 Academic Info">
                 <Row>
                   <Col md={6}>
                     <Form.Group className="mb-3">
@@ -789,6 +935,7 @@ const TeacherManagement = () => {
                         name="qualification"
                         value={formData.qualification}
                         onChange={handleFormChange}
+                        placeholder="e.g. Shuklayajurveda Ghanapathi (MA)"
                       />
                     </Form.Group>
                   </Col>
@@ -800,6 +947,72 @@ const TeacherManagement = () => {
                         name="specialization"
                         value={formData.specialization}
                         onChange={handleFormChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Veda</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="veda"
+                        value={formData.veda}
+                        onChange={handleFormChange}
+                        placeholder="e.g. Shuklayajurveda"
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Shakha</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="shakha"
+                        value={formData.shakha}
+                        onChange={handleFormChange}
+                        placeholder="e.g. Madhyandhina Shakha"
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={12}>
+                    <h6 className="mb-3">Educational Background</h6>
+                  </Col>
+                  <Col md={12}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Moolanta</Form.Label>
+                      <Form.Control
+                        as="textarea"
+                        rows={2}
+                        name="educationalBackground.moolanta"
+                        value={(formData.educationalBackground || {}).moolanta || ''}
+                        onChange={handleFormChange}
+                        placeholder="e.g. Shuklayajurveda (Madhyandina) Moolanta from..."
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={12}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Kramanta (BA)</Form.Label>
+                      <Form.Control
+                        as="textarea"
+                        rows={2}
+                        name="educationalBackground.kramanta"
+                        value={(formData.educationalBackground || {}).kramanta || ''}
+                        onChange={handleFormChange}
+                        placeholder="e.g. Shuklayajurveda (Madhyandina) Kramanta (BA) from..."
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={12}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Ghananta (MA)</Form.Label>
+                      <Form.Control
+                        as="textarea"
+                        rows={2}
+                        name="educationalBackground.ghananta"
+                        value={(formData.educationalBackground || {}).ghananta || ''}
+                        onChange={handleFormChange}
+                        placeholder="e.g. Shuklayajurveda (Madhyandina) Ghananta (MA) from..."
                       />
                     </Form.Group>
                   </Col>
@@ -821,21 +1034,124 @@ const TeacherManagement = () => {
                       <Form.Control
                         type="text"
                         name="subjects"
-                        value={formData.subjects.join(', ')}
+                        value={(formData.subjects || []).join(', ')}
                         onChange={handleFormChange}
-                        placeholder="e.g. Mathematics, Physics, Chemistry"
+                        placeholder="e.g. Vedic Studies, Sanskrit Grammar"
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+              </Tab>
+
+              {/* Address Information Tab */}
+              <Tab eventKey="address" title="🏠 Address & Contact">
+                <Row>
+                  <Col md={12}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Permanent Address</Form.Label>
+                      <Form.Control
+                        as="textarea"
+                        rows={2}
+                        name="permanentAddress"
+                        value={formData.permanentAddress}
+                        onChange={handleFormChange}
+                        placeholder="Full permanent address"
                       />
                     </Form.Group>
                   </Col>
                   <Col md={12}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Address</Form.Label>
+                      <Form.Label>Current Address</Form.Label>
                       <Form.Control
                         as="textarea"
                         rows={2}
                         name="address"
                         value={formData.address}
                         onChange={handleFormChange}
+                        placeholder="Current residential address"
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+              </Tab>
+
+              {/* Bank & ID Details Tab */}
+              <Tab eventKey="bank" title="💳 Bank & IDs">
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Aadhaar Number</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="aadhaarNumber"
+                        value={formData.aadhaarNumber}
+                        onChange={handleFormChange}
+                        placeholder="12-digit Aadhaar Number"
+                        maxLength="12"
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>PAN Number</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="panNumber"
+                        value={formData.panNumber}
+                        onChange={handleFormChange}
+                        placeholder="e.g. ABCDE1234F"
+                        maxLength="10"
+                        style={{ textTransform: 'uppercase' }}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Bank Name</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="bankDetails.bankName"
+                        value={(formData.bankDetails || {}).bankName || ''}
+                        onChange={handleFormChange}
+                        placeholder="e.g. State Bank of India"
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Account Number</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="bankDetails.accountNumber"
+                        value={(formData.bankDetails || {}).accountNumber || ''}
+                        onChange={handleFormChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>IFSC Code</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="bankDetails.ifscCode"
+                        value={(formData.bankDetails || {}).ifscCode || ''}
+                        onChange={handleFormChange}
+                        placeholder="e.g. SBIN0040871"
+                        maxLength="11"
+                        style={{ textTransform: 'uppercase' }}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={12}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Bank Address</Form.Label>
+                      <Form.Control
+                        as="textarea"
+                        rows={2}
+                        name="bankDetails.bankAddress"
+                        value={(formData.bankDetails || {}).bankAddress || ''}
+                        onChange={handleFormChange}
+                        placeholder="Branch address"
                       />
                     </Form.Group>
                   </Col>

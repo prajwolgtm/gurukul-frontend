@@ -63,7 +63,10 @@ const StudentManagement = () => {
     shaakha: '',
     gothra: '',
     status: 'active',
-    remarks: ''
+    remarks: '',
+    aadhaarNumber: '',
+    panNumber: '',
+    bankDetails: { bankName: '', bankAddress: '', accountNumber: '', ifscCode: '', accountHolderName: '' }
   });
 
   // Filter states
@@ -390,6 +393,16 @@ const StudentManagement = () => {
         ...prev,
         [name]: selectedOptions
       }));
+    } else if (name.startsWith('bankDetails.')) {
+      // Handle nested bank details fields
+      const field = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        bankDetails: {
+          ...prev.bankDetails,
+          [field]: value
+        }
+      }));
     } else {
       setFormData(prev => ({
         ...prev,
@@ -415,11 +428,20 @@ const StudentManagement = () => {
     try {
       setLoading(true);
       
+      console.log('💾 Saving student with data:', formData);
+      console.log('📝 Bank/ID fields:', {
+        aadhaarNumber: formData.aadhaarNumber,
+        panNumber: formData.panNumber,
+        bankDetails: formData.bankDetails
+      });
+      
       if (editingStudent) {
-        await studentsAPI.updateStudent(editingStudent._id, formData);
+        const response = await studentsAPI.updateStudent(editingStudent._id, formData);
+        console.log('✅ Update response:', response);
         setMessage({ type: 'success', text: 'Student updated successfully!' });
       } else {
-        await studentsAPI.createStudent(formData);
+        const response = await studentsAPI.createStudent(formData);
+        console.log('✅ Create response:', response);
         setMessage({ type: 'success', text: 'Student created successfully!' });
       }
       
@@ -466,7 +488,16 @@ const StudentManagement = () => {
       shaakha: student.shaakha || '',
       gothra: student.gothra || '',
       status: student.status || 'active',
-      remarks: student.remarks || ''
+      remarks: student.remarks || '',
+      aadhaarNumber: student.aadhaarNumber || '',
+      panNumber: student.panNumber || '',
+      bankDetails: {
+        bankName: student.bankDetails?.bankName || '',
+        bankAddress: student.bankDetails?.bankAddress || '',
+        accountNumber: student.bankDetails?.accountNumber || '',
+        ifscCode: student.bankDetails?.ifscCode || '',
+        accountHolderName: student.bankDetails?.accountHolderName || ''
+      }
     });
 
     // Load sub-departments and batches for the student's department
@@ -522,7 +553,10 @@ const StudentManagement = () => {
       shaakha: '',
       gothra: '',
       status: 'active',
-      remarks: ''
+      remarks: '',
+      aadhaarNumber: '',
+      panNumber: '',
+      bankDetails: { bankName: '', bankAddress: '', accountNumber: '', ifscCode: '', accountHolderName: '' }
     });
     setEditingStudent(null);
     setSubDepartments([]);
@@ -1283,6 +1317,103 @@ const StudentManagement = () => {
                         name="remarks"
                         value={formData.remarks}
                         onChange={handleFormChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+              </Tab>
+
+              {/* Bank & ID Details Tab */}
+              <Tab eventKey="bank" title="💳 Bank & IDs">
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Aadhaar Number</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="aadhaarNumber"
+                        value={formData.aadhaarNumber}
+                        onChange={handleFormChange}
+                        placeholder="12-digit Aadhaar Number"
+                        maxLength="12"
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>PAN Number</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="panNumber"
+                        value={formData.panNumber}
+                        onChange={handleFormChange}
+                        placeholder="e.g. ABCDE1234F"
+                        maxLength="10"
+                        style={{ textTransform: 'uppercase' }}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={12}>
+                    <h6 className="mb-3">Bank Details</h6>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Bank Name</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="bankDetails.bankName"
+                        value={(formData.bankDetails || {}).bankName || ''}
+                        onChange={handleFormChange}
+                        placeholder="e.g. State Bank of India"
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Account Holder Name</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="bankDetails.accountHolderName"
+                        value={(formData.bankDetails || {}).accountHolderName || ''}
+                        onChange={handleFormChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Account Number</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="bankDetails.accountNumber"
+                        value={(formData.bankDetails || {}).accountNumber || ''}
+                        onChange={handleFormChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>IFSC Code</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="bankDetails.ifscCode"
+                        value={(formData.bankDetails || {}).ifscCode || ''}
+                        onChange={handleFormChange}
+                        placeholder="e.g. SBIN0040871"
+                        maxLength="11"
+                        style={{ textTransform: 'uppercase' }}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={12}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Bank Address</Form.Label>
+                      <Form.Control
+                        as="textarea"
+                        rows={2}
+                        name="bankDetails.bankAddress"
+                        value={(formData.bankDetails || {}).bankAddress || ''}
+                        onChange={handleFormChange}
+                        placeholder="Branch address"
                       />
                     </Form.Group>
                   </Col>
