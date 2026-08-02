@@ -51,7 +51,6 @@ function App() {
         <Suspense fallback={<LoadingSpinner />}>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/register-staff" element={<StaffRegistration />} />
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout><Outlet /></Layout>}>
                 <Route index element={
@@ -78,6 +77,11 @@ function App() {
                 <Route path="exams" element={<ExamManagement />} />
                 <Route path="my-attendance" element={<SelfAttendance />} />
                 <Route path="parent-dashboard" element={<ParentDashboard />} />
+                <Route path="register-staff" element={
+                  <RoleBasedRoute allowedRoles={[ROLES.ADMIN, ROLES.COORDINATOR]}>
+                    <StaffRegistration />
+                  </RoleBasedRoute>
+                } />
                 <Route path="password-reset" element={<PasswordReset />} />
                 <Route path="academic-year-settings" element={<AcademicYearSettings />} />
                 <Route path="security-scanner" element={<SecurityQRScanner />} />

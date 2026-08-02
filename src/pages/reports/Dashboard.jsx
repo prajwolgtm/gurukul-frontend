@@ -243,7 +243,7 @@ const Dashboard = () => {
         <Col md={12}>
           <Card style={CARD_STYLE} className="h-100">
             <Card.Header className="d-flex justify-content-between align-items-center bg-white border-0">
-              <div className="fw-bold">📊 Daily Attendance Report</div>
+              <div className="fw-bold">Daily Attendance Report</div>
               <Button variant="outline-primary" size="sm" href="/reports/daily-attendance">
                 View Report
               </Button>

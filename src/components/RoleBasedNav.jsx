@@ -5,19 +5,17 @@ import { ROLES } from '../utils/roles';
 const NavLink = ({ to, children, mobile, onClick }) => {
   const location = useLocation();
   const isActive = location.pathname === to;
+  const initial = String(children || '').slice(0, 1).toUpperCase();
   
   if (mobile) {
     return (
       <Link
         to={to}
         onClick={onClick}
-        className={`block px-4 py-4 rounded-xl text-base font-medium transition-all min-h-[48px] flex items-center ${
-          isActive
-            ? 'bg-violet-100 text-violet-700'
-            : 'text-slate-600 active:bg-slate-100 hover:text-slate-800'
-        }`}
+        className={`app-nav-link app-nav-link-mobile ${isActive ? 'active' : ''}`}
       >
-        {children}
+        <span className="app-nav-icon" aria-hidden="true">{initial}</span>
+        <span>{children}</span>
       </Link>
     );
   }
@@ -25,13 +23,10 @@ const NavLink = ({ to, children, mobile, onClick }) => {
   return (
     <Link
       to={to}
-      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-        isActive
-          ? 'bg-violet-100 text-violet-700'
-          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
-      }`}
+      className={`app-nav-link ${isActive ? 'active' : ''}`}
     >
-      {children}
+      <span className="app-nav-icon" aria-hidden="true">{initial}</span>
+      <span>{children}</span>
     </Link>
   );
 };
@@ -43,71 +38,74 @@ const RoleBasedNav = ({ mobile, onItemClick }) => {
 
   const navItems = {
     [ROLES.ADMIN]: [
-      { to: '/', label: '📊 Dashboard' },
-      { to: '/departments', label: '🏛️ Departments' },
-      { to: '/students', label: '👨‍🎓 Students' },
-      { to: '/teachers', label: '👨‍🏫 Teachers' },
-      { to: '/exams', label: '📝 Exams' },
-      { to: '/requests', label: '📋 Requests' },
-      { to: '/classes', label: '🏫 Classes' },
-      { to: '/reports', label: '📈 Reports' },
-      { to: '/exam-results', label: '🏆 Results' },
-      { to: '/password-reset', label: '🔑 Reset Password' },
-      { to: '/security-scanner', label: '🔒 QR Scanner' },
+      { to: '/', label: 'Dashboard' },
+      { to: '/departments', label: 'Departments' },
+      { to: '/students', label: 'Students' },
+      { to: '/teachers', label: 'Teachers' },
+      { to: '/exams', label: 'Exams' },
+      { to: '/requests', label: 'Requests' },
+      { to: '/classes', label: 'Classes' },
+      { to: '/reports', label: 'Reports' },
+      { to: '/exam-results', label: 'Results' },
+      { to: '/password-reset', label: 'Reset Password' },
+      { to: '/security-scanner', label: 'QR Scanner' },
     ],
     [ROLES.COORDINATOR]: [
-      { to: '/', label: '📊 Dashboard' },
-      { to: '/departments', label: '🏛️ Departments' },
-      { to: '/students', label: '👨‍🎓 Students' },
-      { to: '/teachers', label: '👨‍🏫 Teachers' },
-      { to: '/exams', label: '📝 Exams' },
-      { to: '/requests', label: '📋 Requests' },
-      { to: '/classes', label: '🏫 Classes' },
-      { to: '/reports', label: '📈 Reports' },
-      { to: '/exam-results', label: '🏆 Results' },
-      { to: '/password-reset', label: '🔑 Reset Password' },
+      { to: '/', label: 'Dashboard' },
+      { to: '/departments', label: 'Departments' },
+      { to: '/students', label: 'Students' },
+      { to: '/teachers', label: 'Teachers' },
+      { to: '/exams', label: 'Exams' },
+      { to: '/requests', label: 'Requests' },
+      { to: '/classes', label: 'Classes' },
+      { to: '/reports', label: 'Reports' },
+      { to: '/exam-results', label: 'Results' },
+      { to: '/password-reset', label: 'Reset Password' },
     ],
     [ROLES.PRINCIPAL]: [
-      { to: '/', label: '📊 Dashboard' },
-      { to: '/departments', label: '🏛️ Departments' },
-      { to: '/students', label: '👨‍🎓 Students' },
-      { to: '/teachers', label: '👨‍🏫 Teachers' },
-      { to: '/exams', label: '📝 Exams' },
-      { to: '/requests', label: '📋 Requests' },
-      { to: '/classes', label: '🏫 Classes' },
-      { to: '/reports', label: '📈 Reports' },
-      { to: '/exam-results', label: '🏆 Results' },
+      { to: '/', label: 'Dashboard' },
+      { to: '/departments', label: 'Departments' },
+      { to: '/students', label: 'Students' },
+      { to: '/teachers', label: 'Teachers' },
+      { to: '/exams', label: 'Exams' },
+      { to: '/requests', label: 'Requests' },
+      { to: '/classes', label: 'Classes' },
+      { to: '/reports', label: 'Reports' },
+      { to: '/exam-results', label: 'Results' },
     ],
     [ROLES.HOD]: [
-      { to: '/', label: '📊 Dashboard' },
-      { to: '/departments', label: '🏛️ Department' },
-      { to: '/students', label: '👨‍🎓 Students' },
-      { to: '/exams', label: '📝 Exams' },
-      { to: '/requests', label: '📋 Requests' },
-      { to: '/classes', label: '🏫 Classes' },
-      { to: '/reports', label: '📈 Reports' },
-      { to: '/exam-results', label: '🏆 Results' },
+      { to: '/', label: 'Dashboard' },
+      { to: '/departments', label: 'Department' },
+      { to: '/students', label: 'Students' },
+      { to: '/exams', label: 'Exams' },
+      { to: '/requests', label: 'Requests' },
+      { to: '/classes', label: 'Classes' },
+      { to: '/reports', label: 'Reports' },
+      { to: '/exam-results', label: 'Results' },
     ],
     [ROLES.TEACHER]: [
-      { to: '/', label: '📊 Dashboard' },
-      { to: '/classes', label: '🏫 Classes' },
-      { to: '/exams', label: '📝 Exams' },
-      { to: '/reports', label: '📈 Reports' },
-      { to: '/exam-results', label: '🏆 Results' },
+      { to: '/', label: 'Dashboard' },
+      { to: '/classes', label: 'Classes' },
+      { to: '/exams', label: 'Exams' },
+      { to: '/reports', label: 'Reports' },
+      { to: '/exam-results', label: 'Results' },
     ],
     [ROLES.PARENT]: [
-      { to: '/parent-dashboard', label: '📊 Dashboard' },
-      { to: '/requests', label: '📋 Requests' },
+      { to: '/parent-dashboard', label: 'Dashboard' },
+      { to: '/requests', label: 'Requests' },
     ],
     [ROLES.CARETAKER]: [
-      { to: '/', label: '📊 Dashboard' },
-      { to: '/students', label: '👨‍🎓 Students' },
-      { to: '/reports', label: '📈 Reports' },
-      { to: '/security-scanner', label: '🔒 QR Scanner' },
+      { to: '/', label: 'Dashboard' },
+      { to: '/students', label: 'Students' },
+      { to: '/reports', label: 'Reports' },
+      { to: '/security-scanner', label: 'QR Scanner' },
+    ],
+    [ROLES.SECURITY]: [
+      { to: '/security-scanner', label: 'Gate Scanner' },
     ],
   };
 
-  const items = navItems[user.role] || [{ to: '/', label: '📊 Dashboard' }];
+  const items = navItems[user.role] || [{ to: '/', label: 'Dashboard' }];
 
   return (
     <>

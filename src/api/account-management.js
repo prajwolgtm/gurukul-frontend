@@ -38,3 +38,8 @@ export const syncTeacherVerification = async () => {
   const { data } = await api.post('/account-management/sync-teacher-verification');
   return data;
 };
+
+export const createStaffAccount = async (payload) => {
+  const { data } = await api.post('/account-management/create-staff-account', payload);
+  return data;
+};

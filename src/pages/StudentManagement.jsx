@@ -568,13 +568,13 @@ const StudentManagement = () => {
   };
 
   return (
-    <Container fluid className="py-4">
+    <Container fluid className="py-4 student-management-page">
       <Row>
         <Col>
           {/* Header */}
           <div className="d-flex justify-content-between align-items-center mb-4">
             <div>
-              <h2>🎓 Student Management</h2>
+              <h2>Student Management</h2>
               <p className="text-muted mb-0">Manage student records and assignments</p>
             </div>
             {canCreate && (
@@ -584,14 +584,14 @@ const StudentManagement = () => {
                   onClick={() => { setShowBulkUploadModal(true); }}
                   disabled={loading}
                 >
-                  📤 Bulk Upload
+                  Bulk Upload
                 </Button>
                 <Button 
                   variant="primary" 
                   onClick={() => { resetForm(); setShowModal(true); }}
                   disabled={loading}
                 >
-                  ➕ Add Student
+                  Add Student
                 </Button>
               </div>
             )}
@@ -610,13 +610,13 @@ const StudentManagement = () => {
           )}
 
           {/* Filters */}
-          <Card className="mb-4">
-            <Card.Header>
-              <h6 className="mb-0">🔍 Filters & Search</h6>
+          <Card className="filter-panel mb-4">
+            <Card.Header className="filter-panel-header">
+              <h6 className="mb-0">Filters & Search</h6>
             </Card.Header>
             <Card.Body>
-              <Row>
-                <Col md={3}>
+              <Row className="filter-grid g-3 align-items-end">
+                <Col xs={12} md={6} xl={3}>
                   <Form.Group>
                     <Form.Label>Search</Form.Label>
                     <Form.Control
@@ -628,7 +628,7 @@ const StudentManagement = () => {
                     />
                   </Form.Group>
                 </Col>
-                <Col md={2}>
+                <Col xs={12} sm={6} xl={2}>
                   <Form.Group>
                     <Form.Label>Department</Form.Label>
                     <Form.Select
@@ -645,7 +645,7 @@ const StudentManagement = () => {
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={2}>
+                <Col xs={12} sm={6} xl={2}>
                   <Form.Group>
                     <Form.Label>Sub-Department</Form.Label>
                     <Form.Select
@@ -663,7 +663,7 @@ const StudentManagement = () => {
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={2}>
+                <Col xs={12} sm={6} xl={2}>
                   <Form.Group>
                     <Form.Label>Batch</Form.Label>
                     <Form.Select
@@ -681,7 +681,7 @@ const StudentManagement = () => {
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={2}>
+                <Col xs={12} sm={6} xl={2}>
                   <Form.Group>
                     <Form.Label>Status</Form.Label>
                     <Form.Select
@@ -699,9 +699,8 @@ const StudentManagement = () => {
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={1}>
+                <Col xs={12} sm={6} xl={2}>
                   <Form.Group>
-                    <Form.Label>&nbsp;</Form.Label>
                     <Form.Check
                       type="checkbox"
                       label="Show Leftout"
@@ -713,20 +712,19 @@ const StudentManagement = () => {
                           setFilters(prev => ({ ...prev, status: '' }));
                         }
                       }}
-                      className="mt-2"
+                      className="filter-switch"
                     />
                   </Form.Group>
                 </Col>
-                <Col md={1}>
+                <Col xs={12} sm={6} xl={1}>
                   <Form.Group>
-                    <Form.Label>&nbsp;</Form.Label>
                     <Button
                       variant="outline-secondary"
-                      className="d-block"
+                      className="filter-action-btn w-100"
                       onClick={loadStudents}
                       disabled={loading}
                     >
-                      🔄
+                      Refresh
                     </Button>
                   </Form.Group>
                 </Col>
@@ -735,10 +733,13 @@ const StudentManagement = () => {
           </Card>
 
           {/* Students Table */}
-          <Card>
-            <Card.Header className="d-flex justify-content-between align-items-center">
-              <h6 className="mb-0">📋 Students List</h6>
-              <Badge bg="info">
+          <Card className="student-list-card">
+            <Card.Header className="student-list-header">
+              <div>
+                <h6 className="mb-0">Students List</h6>
+                <small>Swipe or scroll sideways to view all columns</small>
+              </div>
+              <Badge className="student-count-badge">
                 {pagination.totalStudents || 0} Total Students
               </Badge>
             </Card.Header>
@@ -754,9 +755,9 @@ const StudentManagement = () => {
                   <p className="text-muted mb-0">No students found</p>
                 </div>
               ) : (
-                <div className="table-responsive">
-                  <Table striped hover className="mb-0">
-                    <thead className="table-dark">
+                <div className="student-table-scroll">
+                  <Table hover className="mb-0 student-data-table">
+                    <thead>
                       <tr>
                         <th 
                           style={{ cursor: 'pointer', userSelect: 'none' }}
@@ -816,7 +817,7 @@ const StudentManagement = () => {
                             </span>
                           )}
                         </th>
-                        <th>Actions</th>
+                        <th className="student-actions-head">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -830,20 +831,20 @@ const StudentManagement = () => {
                               <strong>{student.fullName}</strong>
                               <br />
                               <small className="text-muted">
-                                {student.email && `📧 ${student.email}`}
-                                {student.phone && ` | 📞 ${student.phone}`}
+                                {student.email && student.email}
+                                {student.phone && ` | ${student.phone}`}
                               </small>
                             </div>
                           </td>
                           <td>{student.fatherName}</td>
                           <td>
-                            <Badge bg="primary">
+                            <Badge className="student-pill student-pill-department">
                               {student.department?.name || 'N/A'}
                             </Badge>
                           </td>
                           <td>
                             {student.currentStandard ? (
-                              <Badge bg="secondary">
+                              <Badge className="student-pill student-pill-standard">
                                 {student.currentStandard}
                               </Badge>
                             ) : (
@@ -853,7 +854,7 @@ const StudentManagement = () => {
                           <td>
                             {student.subDepartments?.length > 0 ? (
                               student.subDepartments.map(sd => (
-                                <Badge key={sd._id} bg="info" className="me-1">
+                                <Badge key={sd._id} className="student-pill student-pill-subdept">
                                   {sd.name}
                                 </Badge>
                               ))
@@ -864,7 +865,7 @@ const StudentManagement = () => {
                           <td>
                             {student.batches?.length > 0 ? (
                               student.batches.map(batch => (
-                                <Badge key={batch._id} bg="success" className="me-1">
+                                <Badge key={batch._id} className="student-pill student-pill-batch">
                                   {batch.name}
                                 </Badge>
                               ))
@@ -873,7 +874,8 @@ const StudentManagement = () => {
                             )}
                           </td>
                           <td>
-                            <Badge 
+                            <Badge
+                              className={`student-status-pill student-status-${String(student.status || 'unknown').toLowerCase().replace(/\s+/g, '-')}`}
                               bg={
                                 student.status === 'active' ? 'success' :
                                 student.status === 'graduated' ? 'primary' :
@@ -887,34 +889,37 @@ const StudentManagement = () => {
                               {student.status}
                             </Badge>
                           </td>
-                          <td>
-                            <div className="d-flex gap-1">
+                          <td className="student-actions-cell">
+                            <div className="student-row-actions">
                               <Button
                                 variant="outline-secondary"
                                 size="sm"
+                                className="student-action-btn"
                                 onClick={() => handleViewProfile(student)}
                                 title="View student profile"
                               >
-                                👁️
+                                View
                               </Button>
                               {canManage && (
                                 <Button
                                   variant="outline-primary"
                                   size="sm"
+                                  className="student-action-btn"
                                   onClick={() => handleEdit(student)}
                                   title="Edit student"
                                 >
-                                  ✏️
+                                  Edit
                                 </Button>
                               )}
                               {canManage && canDelete && (
                                 <Button
                                   variant="outline-danger"
                                   size="sm"
+                                  className="student-action-btn student-action-danger"
                                   onClick={() => handleDelete(student._id)}
                                   title="Delete student"
                                 >
-                                  🗑️
+                                  Delete
                                 </Button>
                               )}
                             </div>
@@ -981,17 +986,17 @@ const StudentManagement = () => {
       </Row>
 
       {/* Add/Edit Student Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="xl">
+      <Modal show={showModal} onHide={() => setShowModal(false)} size="xl" scrollable>
         <Modal.Header closeButton>
           <Modal.Title>
-            {editingStudent ? '✏️ Edit Student' : '➕ Add New Student'}
+            {editingStudent ? 'Edit Student' : 'Add New Student'}
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubmit}>
           <Modal.Body>
             <Tabs defaultActiveKey="basic" className="mb-3">
               {/* Basic Information Tab */}
-              <Tab eventKey="basic" title="📝 Basic Info">
+              <Tab eventKey="basic" title="Basic Info">
                 <Row>
                   <Col md={6}>
                     <Form.Group className="mb-3">
@@ -1103,7 +1108,7 @@ const StudentManagement = () => {
               </Tab>
 
               {/* Family Information Tab */}
-              <Tab eventKey="family" title="👨‍👩‍👧‍👦 Family Info">
+              <Tab eventKey="family" title="Family Info">
                 <Row>
                   <Col md={6}>
                     <Form.Group className="mb-3">
@@ -1182,7 +1187,7 @@ const StudentManagement = () => {
               </Tab>
 
               {/* Academic Information Tab */}
-              <Tab eventKey="academic" title="🎓 Academic Info">
+              <Tab eventKey="academic" title="Academic Info">
                 <Row>
                   <Col md={12}>
                     <Form.Group className="mb-3">
@@ -1440,9 +1445,9 @@ const StudentManagement = () => {
       </Modal>
 
       {/* Bulk Upload Modal */}
-      <Modal show={showBulkUploadModal} onHide={() => setShowBulkUploadModal(false)} size="xl">
+      <Modal show={showBulkUploadModal} onHide={() => setShowBulkUploadModal(false)} size="xl" scrollable>
         <Modal.Header closeButton>
-          <Modal.Title>📤 Bulk Upload Students</Modal.Title>
+          <Modal.Title>Bulk Upload Students</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Tabs defaultActiveKey="file" className="mb-3">
@@ -1478,7 +1483,7 @@ const StudentManagement = () => {
             </Tab>
 
             {/* JSON Input Tab */}
-            <Tab eventKey="json" title="📝 JSON Input">
+            <Tab eventKey="json" title="JSON Input">
               <div className="mb-3">
                 <p className="text-muted">
                   Paste or type student data in JSON format. Expected format: Array of student objects.
@@ -1556,7 +1561,7 @@ const StudentManagement = () => {
                 Uploading...
               </>
             ) : (
-              '📤 Upload Students'
+              'Upload Students'
             )}
           </Button>
         </Modal.Footer>

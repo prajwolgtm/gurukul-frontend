@@ -23,6 +23,9 @@ const RoleBasedRoute = ({ children, allowedRoles, redirectTo = '/parent-dashboar
     if (user.role === ROLES.PARENT) {
       return <Navigate to="/parent-dashboard" replace />;
     }
+    if (user.role === ROLES.SECURITY) {
+      return <Navigate to="/security-scanner" replace />;
+    }
     // For other roles without permission, redirect to home (which will be protected by their role)
     return <Navigate to="/" replace />;
   }
@@ -31,5 +34,4 @@ const RoleBasedRoute = ({ children, allowedRoles, redirectTo = '/parent-dashboar
 };
 
 export default RoleBasedRoute;
-
 

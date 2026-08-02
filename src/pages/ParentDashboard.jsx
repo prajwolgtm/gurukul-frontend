@@ -155,11 +155,11 @@ const ParentDashboard = () => {
   };
 
   const tabs = [
-    { key: 'info', label: '📋 Basic Info' },
-    { key: 'marks', label: '📊 Exam Marks' },
+    { key: 'info', label: 'Basic Info' },
+    { key: 'marks', label: 'Exam Marks' },
     { key: 'transactions', label: '💰 Wallet' },
-    { key: 'notes', label: '📝 Notes' },
-    { key: 'requests', label: '📋 Requests' }
+    { key: 'notes', label: 'Notes' },
+    { key: 'requests', label: 'Requests' }
   ];
 
   return (

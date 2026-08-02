@@ -65,7 +65,7 @@ const SelfAttendance = () => {
       if (response.data.success) {
         setMessage({ 
           type: 'success', 
-          text: '✅ Your attendance has been saved successfully!' 
+          text: 'Your attendance has been saved successfully!' 
         });
         await loadTodayAttendance();
       } else {
@@ -94,7 +94,7 @@ const SelfAttendance = () => {
         <Col md={8} lg={6}>
           <Card className="shadow-sm">
             <Card.Header className="bg-primary text-white text-center">
-              <h4 className="mb-0">📅 Daily Attendance</h4>
+              <h4 className="mb-0">Daily Attendance</h4>
               <p className="mb-0 mt-2" style={{ fontSize: '0.9rem', opacity: 0.9 }}>
                 Mark your daily attendance by selecting the date, choosing Present/Absent/Leave, and submitting your remark if needed.
               </p>
@@ -102,7 +102,7 @@ const SelfAttendance = () => {
             <Card.Body>
               {/* Welcome Message */}
               <Alert variant="info" className="text-center mb-4">
-                <h5 className="mb-2">👋 Hello! Please complete your attendance for today.</h5>
+                <h5 className="mb-2">Hello! Please complete your attendance for today.</h5>
                 <p className="mb-0">
                   Choose your status (Present, Absent, or Leave) and add a short note if required.
                   <br />
@@ -228,7 +228,7 @@ const SelfAttendance = () => {
                   {isPastDate && todayAttendance && (
                     <Alert variant="warning" className="mt-3 mb-0">
                       <small>
-                        ⚠️ This date is in the past and attendance has already been marked. 
+                        This date is in the past and attendance has already been marked. 
                         Contact administrator to modify.
                       </small>
                     </Alert>
@@ -241,7 +241,7 @@ const SelfAttendance = () => {
           {/* Instructions Card */}
           <Card className="mt-4 shadow-sm">
             <Card.Header className="bg-light">
-              <h6 className="mb-0">ℹ️ Daily Attendance</h6>
+              <h6 className="mb-0">Daily Attendance</h6>
             </Card.Header>
             <Card.Body>
               <p className="mb-2"><strong>Please fill the following:</strong></p>
@@ -260,4 +260,3 @@ const SelfAttendance = () => {
 };
 
 export default SelfAttendance;
-

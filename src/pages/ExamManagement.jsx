@@ -8,6 +8,8 @@ import { useAuth } from '../store/auth';
 import { ROLES } from '../utils/roles';
 import examsAPI, { examMarksAPI } from '../api/exams';
 import academicAPI from '../api/academic';
+import teachersAPI from '../api/teachers';
+import studentsAPI from '../api/students';
 import AcademicYearFilter from '../components/AcademicYearFilter';
 
 // Standard options for student selection
@@ -35,7 +37,24 @@ const ExamManagement = () => {
   const [departments, setDepartments] = useState([]);
   const [subDepartments, setSubDepartments] = useState([]);
   const [batches, setBatches] = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [eligibleStudents, setEligibleStudents] = useState([]);
+  const [studentPreview, setStudentPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [customAudienceRules, setCustomAudienceRules] = useState([]);
+  const [customRuleForm, setCustomRuleForm] = useState({
+    selectionType: 'department',
+    targetDepartment: '',
+    targetSubDepartments: [],
+    targetBatches: [],
+    targetStandards: [],
+    targetDepartmentStandard: ''
+  });
+  const [customSubDepartments, setCustomSubDepartments] = useState([]);
+  const [customBatches, setCustomBatches] = useState([]);
+  const [customStudentSearch, setCustomStudentSearch] = useState('');
+  const [customStudentResults, setCustomStudentResults] = useState([]);
+  const [customStudentSearchLoading, setCustomStudentSearchLoading] = useState(false);
   const [pagination, setPagination] = useState({});
   const [message, setMessage] = useState({ type: '', text: '' });
 
@@ -49,6 +68,10 @@ const ExamManagement = () => {
   const [selectedExam, setSelectedExam] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [examMarks, setExamMarks] = useState([]);
+  const [selectedSubjectForEntry, setSelectedSubjectForEntry] = useState('');
+  const [subjectMarksGrid, setSubjectMarksGrid] = useState({});
+  const [marksSearch, setMarksSearch] = useState('');
+  const [savingSubjectMarks, setSavingSubjectMarks] = useState(false);
   const [marksFormData, setMarksFormData] = useState({
     isPresent: true,
     absentReason: '',
@@ -77,11 +100,13 @@ const ExamManagement = () => {
     standard: '', // Standard field for Basic Info tab
     selectionType: 'department',
     targetDepartment: '',
+    targetDepartments: [],
     targetSubDepartments: [],
     targetBatches: [],
     targetStandards: [],
     targetDepartmentStandard: '', // For department + single standard selection
     customStudents: [],
+    accessTeachers: [],
     subjects: [],
     instructions: '',
     venue: '',
@@ -113,15 +138,287 @@ const ExamManagement = () => {
   const canCreate = user?.role !== ROLES.PARENT;
   const canDelete = [ROLES.ADMIN, ROLES.COORDINATOR].includes(user?.role);
 
+  const getExamTypeLabel = (type) => ({
+    unit: 'Unit Test',
+    midterm: 'Mid-term',
+    final: 'Final',
+    assignment: 'Assignment',
+    project: 'Project',
+    practical: 'Practical'
+  }[type] || type || 'Exam');
+
+  const getStatusVariant = (status) => ({
+    draft: 'secondary',
+    scheduled: 'primary',
+    ongoing: 'warning',
+    completed: 'success',
+    cancelled: 'danger'
+  }[status] || 'secondary');
+
+  const getScopeLabel = (selectionType) => ({
+    department: 'Veda',
+    departmentStandard: 'Veda + Standard',
+    subDepartment: 'Shakha',
+    batch: 'Batch',
+    standard: 'Standard',
+    custom: 'Custom'
+  }[selectionType] || 'Selection');
+
+  const getScopeDetail = (exam) => {
+    if (exam.selectionType === 'department' && exam.targetDepartments?.includes('__all__')) {
+      return 'All Departments';
+    }
+    if (exam.selectionType === 'department' && exam.targetDepartments?.length > 0) {
+      return `${exam.targetDepartments.length} department(s)`;
+    }
+    if (exam.selectionType === 'department' && exam.targetDepartment) {
+      return exam.targetDepartment?.name || 'N/A';
+    }
+    if (exam.selectionType === 'department') {
+      return 'All Vedas';
+    }
+    if (exam.selectionType === 'departmentStandard' && exam.targetDepartment && exam.targetDepartmentStandard) {
+      return `${exam.targetDepartment?.name || 'N/A'} - ${exam.targetDepartmentStandard}`;
+    }
+    if (exam.selectionType === 'subDepartment' && exam.targetSubDepartments?.length > 0) {
+      return exam.targetSubDepartments.map(sd => sd.name || sd).join(', ');
+    }
+    if (exam.selectionType === 'batch' && exam.targetBatches?.length > 0) {
+      return exam.targetBatches.map(b => b.name || b).join(', ');
+    }
+    if (exam.selectionType === 'standard' && exam.targetStandards?.length > 0) {
+      return exam.targetStandards.join(', ');
+    }
+    if (exam.selectionType === 'custom' && exam.customStudents?.length > 0) {
+      return `${exam.customStudents.length} students`;
+    }
+    return 'No selection';
+  };
+
+  const getEligibleLabel = (exam) => {
+    if (exam.eligibleStudentsCount !== undefined) return `${exam.eligibleStudentsCount} eligible`;
+    if (exam.customStudents?.length > 0) return `${exam.customStudents.length} students`;
+    return 'View students';
+  };
+
+  const getTeacherName = (teacher) => (
+    teacher.user?.fullName ||
+    teacher.user?.personalInfo?.fullName ||
+    teacher.fullName ||
+    teacher.personalInfo?.fullName ||
+    teacher.email ||
+    'Teacher'
+  );
+
+  const getTeacherUserId = (teacher) => teacher.user?._id || teacher.user || teacher._id;
+
+  const getSubjectId = (subjectConfig) => subjectConfig?.subject?._id || subjectConfig?.subject;
+
+  const getSubjectName = (subjectConfig) => (
+    subjectConfig?.subject?.name ||
+    subjects.find(subject => subject._id === getSubjectId(subjectConfig))?.name ||
+    'Subject'
+  );
+
+  const getSubjectCategoryLabel = (category) => ({
+    theory: 'Theory',
+    practical: 'Practical',
+    oral: 'Oral',
+    project: 'Project'
+  }[category] || category || 'Subject');
+
+  const toggleArrayValue = (field, value) => {
+    setExamFormData(prev => {
+      const current = prev[field] || [];
+      const next = current.includes(value)
+        ? current.filter(item => item !== value)
+        : [...current, value];
+
+      return {
+        ...prev,
+        [field]: next
+      };
+    });
+    setStudentPreview(null);
+  };
+
+  const setSingleExamField = (field, value, resets = {}) => {
+    setExamFormData(prev => ({
+      ...prev,
+      [field]: value,
+      ...resets
+    }));
+    setStudentPreview(null);
+  };
+
+  const toggleSubject = (subjectId) => {
+    setExamFormData(prev => {
+      const exists = prev.subjects.some(item => item.subject === subjectId);
+      const nextSubjects = exists
+        ? prev.subjects.filter(item => item.subject !== subjectId)
+        : [
+            ...prev.subjects,
+            {
+              subject: subjectId,
+              maxMarks: 100,
+              passingMarks: 40,
+              weightage: 1,
+              useDivisions: prev.useDivisions || false,
+              divisions: prev.useDivisions
+                ? Array.from({ length: 10 }, (_, i) => ({
+                    name: `Division ${i + 1}`,
+                    maxMarks: 10,
+                    order: i + 1
+                  }))
+                : []
+            }
+          ];
+
+      return {
+        ...prev,
+        subjects: nextSubjects
+      };
+    });
+  };
+
+  const OptionTileGrid = ({
+    items,
+    selected = [],
+    onToggle,
+    getLabel,
+    getMeta,
+    emptyText = 'No options available',
+    columns = 'auto',
+    disabled = false
+  }) => (
+    <div className={`option-tile-grid option-tile-grid-${columns}`}>
+      {items.length === 0 ? (
+        <div className="option-empty-state">{emptyText}</div>
+      ) : (
+        items.map(item => {
+          const value = item.value || item._id || item.id;
+          const active = selected.includes(value);
+          return (
+            <button
+              type="button"
+              key={value}
+              className={`option-tile ${active ? 'selected' : ''}`}
+              onClick={() => !disabled && onToggle(value)}
+              disabled={disabled}
+            >
+              <span className="option-check">{active ? 'On' : ''}</span>
+              <span>
+                <strong>{getLabel(item)}</strong>
+                {getMeta && <small>{getMeta(item)}</small>}
+              </span>
+            </button>
+          );
+        })
+      )}
+    </div>
+  );
+
+  const getStudentId = (student) => student?._id || student?.id || student?.student;
+
+  const getStudentName = (student) => (
+    student?.fullName ||
+    student?.personalInfo?.fullName ||
+    student?.student?.fullName ||
+    'Student'
+  );
+
+  const getStudentMeta = (student) => [
+    student?.admissionNo || student?.studentId,
+    student?.department?.name,
+    student?.currentStandard
+  ].filter(Boolean).join(' | ');
+
+  const selectedCustomStudents = examFormData.customStudents
+    .map(studentId => customStudentResults.find(student => getStudentId(student) === studentId) || studentPreview?.students?.find(student => getStudentId(student) === studentId) || { _id: studentId, fullName: 'Selected student' });
+
+  const getRuleLabel = (rule) => {
+    const dept = departments.find(item => item._id === rule.targetDepartment);
+    const deptName = dept?.name || 'Any Veda';
+    if (rule.selectionType === 'department') return `Entire Veda: ${deptName}`;
+    if (rule.selectionType === 'subDepartment') {
+      const names = rule.targetSubDepartments
+        .map(id => [...customSubDepartments, ...subDepartments].find(item => item._id === id)?.name || 'Shakha')
+        .join(', ');
+      return `${deptName} / ${names || 'selected Shakha'}`;
+    }
+    if (rule.selectionType === 'batch') {
+      const names = rule.targetBatches
+        .map(id => [...customBatches, ...batches].find(item => item._id === id)?.name || 'Batch')
+        .join(', ');
+      return `${deptName} / ${names || 'selected Batch'}`;
+    }
+    if (rule.selectionType === 'standard') return `Standard: ${rule.targetStandards.join(', ')}`;
+    if (rule.selectionType === 'departmentStandard') return `${deptName} / ${rule.targetDepartmentStandard}`;
+    return 'Custom rule';
+  };
+
+  const hydrateSubjectMarksGrid = (subjectId, studentsList = eligibleStudents, marksList = examMarks) => {
+    if (!subjectId) {
+      setSubjectMarksGrid({});
+      return;
+    }
+
+    const nextGrid = {};
+    studentsList.forEach(student => {
+      const existingMark = marksList.find(mark => mark.student?._id === student._id || mark.student === student._id);
+      const existingSubjectMark = existingMark?.subjectMarks?.find(mark => (mark.subject?._id || mark.subject)?.toString() === subjectId.toString());
+      nextGrid[student._id] = {
+        marksObtained: existingSubjectMark?.marksObtained ?? '',
+        remarks: existingSubjectMark?.remarks || '',
+        isPresent: existingMark?.isPresent !== false
+      };
+    });
+    setSubjectMarksGrid(nextGrid);
+  };
+
+  const getResultSummary = () => {
+    const totalStudents = eligibleStudents.length;
+    const enteredCount = examMarks.length;
+    const passedCount = examMarks.filter(mark => mark.isPassed).length;
+    const average = enteredCount
+      ? examMarks.reduce((sum, mark) => sum + (mark.overallPercentage || 0), 0) / enteredCount
+      : 0;
+
+    const subjectSummaries = selectedExam?.subjects?.map(subjectConfig => {
+      const subjectId = getSubjectId(subjectConfig)?.toString();
+      const subjectMarks = examMarks
+        .map(mark => mark.subjectMarks?.find(subjectMark => (subjectMark.subject?._id || subjectMark.subject)?.toString() === subjectId))
+        .filter(Boolean);
+      const subjectAverage = subjectMarks.length
+        ? subjectMarks.reduce((sum, mark) => sum + (mark.percentage || 0), 0) / subjectMarks.length
+        : 0;
+      return {
+        id: subjectId,
+        name: getSubjectName(subjectConfig),
+        entered: subjectMarks.length,
+        average: subjectAverage,
+        passCount: subjectMarks.filter(mark => mark.isPassed).length
+      };
+    }) || [];
+
+    const topStudents = [...examMarks]
+      .sort((a, b) => (b.overallPercentage || 0) - (a.overallPercentage || 0))
+      .slice(0, 5);
+
+    return { totalStudents, enteredCount, passedCount, average, subjectSummaries, topStudents };
+  };
+
   const loadInitialData = useCallback(async () => {
     try {
-      const [subjectsRes, departmentsRes] = await Promise.all([
+      const [subjectsRes, departmentsRes, teachersRes] = await Promise.all([
         examsAPI.getSubjects(),
-        academicAPI.getDepartments()
+        academicAPI.getDepartments(),
+        teachersAPI.getTeachers({ status: 'active', isVerified: 'true', limit: 200 })
       ]);
 
       setSubjects(subjectsRes.subjects || []);
       setDepartments(departmentsRes.departments || []);
+      setTeachers(teachersRes.teachers || teachersRes.data?.teachers || []);
     } catch (error) {
       console.error('❌ Error loading initial data:', error);
       setMessage({
@@ -172,6 +469,13 @@ const ExamManagement = () => {
     loadExams();
   }, [loadExams]);
 
+  useEffect(() => {
+    if (showMarksModal && selectedSubjectForEntry) {
+      hydrateSubjectMarksGrid(selectedSubjectForEntry);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSubjectForEntry, examMarks, eligibleStudents, showMarksModal]);
+
   const loadSubDepartments = async (departmentId) => {
     if (!departmentId) {
       setSubDepartments([]);
@@ -207,6 +511,129 @@ const ExamManagement = () => {
     }
   };
 
+  const loadCustomAudienceOptions = async (departmentId) => {
+    if (!departmentId) {
+      setCustomSubDepartments([]);
+      setCustomBatches([]);
+      return;
+    }
+
+    try {
+      const [subDepartmentRes, batchRes] = await Promise.all([
+        academicAPI.getSubDepartments(departmentId),
+        academicAPI.getDepartmentBatches(departmentId)
+      ]);
+      setCustomSubDepartments(subDepartmentRes.subDepartments || []);
+      setCustomBatches(batchRes.batches || []);
+    } catch (error) {
+      console.error('❌ Error loading custom audience options:', error);
+      setCustomSubDepartments([]);
+      setCustomBatches([]);
+    }
+  };
+
+  const handleCustomRuleChange = (e) => {
+    const { name, value } = e.target;
+    const selectedOptions = e.target.multiple
+      ? Array.from(e.target.selectedOptions, option => option.value)
+      : value;
+
+    setCustomRuleForm(prev => {
+      const next = {
+        ...prev,
+        [name]: selectedOptions
+      };
+
+      if (name === 'selectionType') {
+        next.targetDepartment = '';
+        next.targetSubDepartments = [];
+        next.targetBatches = [];
+        next.targetStandards = [];
+        next.targetDepartmentStandard = '';
+      }
+
+      if (name === 'targetDepartment') {
+        next.targetSubDepartments = [];
+        next.targetBatches = [];
+        next.targetDepartmentStandard = '';
+        loadCustomAudienceOptions(value);
+      }
+
+      return next;
+    });
+  };
+
+  const handleAddCustomRule = () => {
+    const rule = {
+      selectionType: customRuleForm.selectionType,
+      targetDepartment: customRuleForm.targetDepartment,
+      department: customRuleForm.targetDepartment,
+      targetSubDepartments: customRuleForm.targetSubDepartments,
+      targetBatches: customRuleForm.targetBatches,
+      targetStandards: customRuleForm.targetStandards,
+      targetDepartmentStandard: customRuleForm.targetDepartmentStandard
+    };
+
+    const hasRequiredTarget =
+      (rule.selectionType === 'department' && rule.targetDepartment) ||
+      (rule.selectionType === 'departmentStandard' && rule.targetDepartment && rule.targetDepartmentStandard) ||
+      (rule.selectionType === 'subDepartment' && rule.targetSubDepartments.length > 0) ||
+      (rule.selectionType === 'batch' && rule.targetBatches.length > 0) ||
+      (rule.selectionType === 'standard' && rule.targetStandards.length > 0);
+
+    if (!hasRequiredTarget) {
+      setMessage({ type: 'warning', text: 'Select the required Veda, Shakha, Batch, or Standard before adding a rule.' });
+      return;
+    }
+
+    setCustomAudienceRules(prev => [...prev, rule]);
+    setStudentPreview(null);
+  };
+
+  const handleSearchCustomStudents = async () => {
+    const search = customStudentSearch.trim();
+    if (search.length < 2) {
+      setCustomStudentResults([]);
+      return;
+    }
+
+    try {
+      setCustomStudentSearchLoading(true);
+      const response = await studentsAPI.getStudents({
+        search,
+        status: 'active',
+        page: 1,
+        limit: 20
+      });
+      setCustomStudentResults(response.students || response.data?.students || []);
+    } catch (error) {
+      console.error('❌ Error searching students:', error);
+      setMessage({ type: 'danger', text: 'Could not search students. Please try again.' });
+    } finally {
+      setCustomStudentSearchLoading(false);
+    }
+  };
+
+  const addCustomStudent = (student) => {
+    const studentId = getStudentId(student);
+    if (!studentId) return;
+    setExamFormData(prev => ({
+      ...prev,
+      customStudents: prev.customStudents.includes(studentId)
+        ? prev.customStudents
+        : [...prev.customStudents, studentId]
+    }));
+    setStudentPreview(null);
+  };
+
+  const removeCustomStudent = (studentId) => {
+    setExamFormData(prev => ({
+      ...prev,
+      customStudents: prev.customStudents.filter(id => id !== studentId)
+    }));
+    setStudentPreview(null);
+  };
+
   const loadEligibleStudents = async (examId) => {
     try {
       const response = await examsAPI.getExam(examId);
@@ -240,7 +667,7 @@ const ExamManagement = () => {
   const handleExamFormChange = (e) => {
     const { name, value, type, checked } = e.target;
     
-    if (name === 'targetSubDepartments' || name === 'targetBatches' || name === 'targetDepartments' || name === 'targetStandards' || name === 'customStudents') {
+    if (name === 'targetSubDepartments' || name === 'targetBatches' || name === 'targetDepartments' || name === 'targetStandards' || name === 'customStudents' || name === 'accessTeachers') {
       // Handle multiple select
       const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
       
@@ -324,6 +751,7 @@ const ExamManagement = () => {
         targetDepartmentStandard: '',
         customStudents: []
       }));
+      setStudentPreview(null);
     }
 
     if (name === 'targetDepartment') {
@@ -335,6 +763,11 @@ const ExamManagement = () => {
         targetBatches: [],
         targetDepartmentStandard: ''
       }));
+      setStudentPreview(null);
+    }
+
+    if (['targetDepartments', 'targetSubDepartments', 'targetBatches', 'targetStandards', 'targetDepartmentStandard', 'customStudents'].includes(name)) {
+      setStudentPreview(null);
     }
   };
 
@@ -351,6 +784,26 @@ const ExamManagement = () => {
     
     try {
       setLoading(true);
+
+      const hasAudience =
+        (examFormData.selectionType === 'department' && examFormData.targetDepartments.length > 0) ||
+        (examFormData.selectionType === 'departmentStandard' && examFormData.targetDepartment && examFormData.targetDepartmentStandard) ||
+        (examFormData.selectionType === 'subDepartment' && examFormData.targetSubDepartments.length > 0) ||
+        (examFormData.selectionType === 'batch' && examFormData.targetBatches.length > 0) ||
+        (examFormData.selectionType === 'standard' && examFormData.targetStandards.length > 0) ||
+        (examFormData.selectionType === 'custom' && (examFormData.customStudents.length > 0 || customAudienceRules.length > 0));
+
+      if (!hasAudience) {
+        setMessage({ type: 'warning', text: 'Please select the exam audience before saving.' });
+        setLoading(false);
+        return;
+      }
+
+      if (examFormData.subjects.length === 0) {
+        setMessage({ type: 'warning', text: 'Please select at least one subject before saving.' });
+        setLoading(false);
+        return;
+      }
       
       // Prepare exam data
       const examData = {
@@ -364,6 +817,7 @@ const ExamManagement = () => {
         batches: examFormData.selectionType === 'batch' ? examFormData.targetBatches : undefined,
         targetStandards: examFormData.selectionType === 'standard' ? examFormData.targetStandards : undefined,
         customStudents: examFormData.selectionType === 'custom' ? examFormData.customStudents : undefined,
+        audienceCriteria: examFormData.selectionType === 'custom' ? customAudienceRules : undefined,
         // Standard field for Basic Info tab (not linked to student selection)
         standard: examFormData.standard || undefined,
         // Include division configuration (fixed 1-10 divisions)
@@ -378,7 +832,8 @@ const ExamManagement = () => {
         // Include multiple departments if selected
         targetDepartments: examFormData.selectionType === 'department' && examFormData.targetDepartments?.length > 0 
           ? examFormData.targetDepartments 
-          : undefined
+          : undefined,
+        accessTeachers: examFormData.accessTeachers || []
       };
       
       if (editingExam) {
@@ -400,6 +855,43 @@ const ExamManagement = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePreviewStudents = async () => {
+    try {
+      setPreviewLoading(true);
+      setStudentPreview(null);
+
+      const previewPayload = {
+        selectionType: examFormData.selectionType,
+        department: (examFormData.selectionType === 'department' || examFormData.selectionType === 'departmentStandard' || examFormData.selectionType === 'subDepartment' || examFormData.selectionType === 'batch')
+          ? examFormData.targetDepartment
+          : undefined,
+        targetDepartments: examFormData.selectionType === 'department' ? examFormData.targetDepartments : undefined,
+        targetSubDepartments: examFormData.selectionType === 'subDepartment' ? examFormData.targetSubDepartments : undefined,
+        targetBatches: examFormData.selectionType === 'batch' ? examFormData.targetBatches : undefined,
+        targetStandards: examFormData.selectionType === 'standard' ? examFormData.targetStandards : undefined,
+        targetDepartmentStandard: examFormData.selectionType === 'departmentStandard' ? examFormData.targetDepartmentStandard : undefined,
+        customStudents: examFormData.selectionType === 'custom' ? examFormData.customStudents : undefined,
+        audienceCriteria: examFormData.selectionType === 'custom' ? customAudienceRules : undefined,
+        limit: examFormData.selectionType === 'custom' ? 25 : 8
+      };
+
+      const response = await examsAPI.previewStudents(previewPayload);
+      setStudentPreview({
+        totalStudents: response.totalStudents || 0,
+        students: response.students || []
+      });
+    } catch (error) {
+      console.error('❌ Error previewing students:', error);
+      setStudentPreview({
+        totalStudents: 0,
+        students: [],
+        error: error.response?.data?.message || 'Could not preview students'
+      });
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
@@ -467,23 +959,28 @@ const ExamManagement = () => {
       duration: exam.duration || 180,
       standard: exam.standard || exam.semester || '', // Support both standard and semester for backward compatibility
       selectionType: exam.examScope || exam.selectionType || 'department',
-      targetDepartment: exam.department?._id || '',
+      targetDepartment: exam.targetDepartment?._id || exam.department?._id || '',
+      targetDepartments: exam.targetDepartments?.map(dept => dept._id || dept) || [],
       targetSubDepartments: exam.subDepartments?.map(sd => sd._id) || exam.targetSubDepartments?.map(sd => sd._id || sd) || [],
       targetBatches: exam.batches?.map(b => b._id) || exam.targetBatches?.map(b => b._id || b) || [],
       targetStandards: exam.targetStandards || [],
       targetDepartmentStandard: exam.targetDepartmentStandard || '',
       customStudents: exam.customStudents?.map(s => s._id) || [],
+      accessTeachers: exam.invigilators?.map(t => t._id || t) || [],
       subjects: exam.subjects || [],
       instructions: exam.instructions || '',
       venue: exam.venue || '',
       remarks: exam.remarks || '',
       useDivisions
     });
+    setCustomAudienceRules([]);
+    setCustomStudentResults(exam.customStudents || []);
 
     // Load related data
-    if (exam.department?._id) {
-      loadSubDepartments(exam.department._id);
-      loadBatches(exam.department._id);
+    const examDepartmentId = exam.targetDepartment?._id || exam.department?._id;
+    if (examDepartmentId) {
+      loadSubDepartments(examDepartmentId);
+      loadBatches(examDepartmentId);
     }
 
     setShowExamModal(true);
@@ -534,9 +1031,55 @@ const ExamManagement = () => {
 
   const handleManageMarks = async (exam) => {
     setSelectedExam(exam);
+    const firstSubjectId = getSubjectId(exam.subjects?.[0]) || '';
+    setSelectedSubjectForEntry(firstSubjectId);
+    setMarksSearch('');
     await loadEligibleStudents(exam._id);
     await loadExamMarks(exam._id);
     setShowMarksModal(true);
+  };
+
+  const handleSubjectGridChange = (studentId, field, value) => {
+    setSubjectMarksGrid(prev => ({
+      ...prev,
+      [studentId]: {
+        ...(prev[studentId] || { marksObtained: '', remarks: '', isPresent: true }),
+        [field]: field === 'isPresent' ? value === true || value === 'true' : value
+      }
+    }));
+  };
+
+  const handleSaveSubjectMarks = async () => {
+    if (!selectedExam || !selectedSubjectForEntry) return;
+
+    try {
+      setSavingSubjectMarks(true);
+      const marksRows = eligibleStudents
+        .map(student => ({
+          student: student._id,
+          marksObtained: subjectMarksGrid[student._id]?.marksObtained,
+          remarks: subjectMarksGrid[student._id]?.remarks,
+          isPresent: subjectMarksGrid[student._id]?.isPresent !== false
+        }))
+        .filter(row => row.marksObtained !== '' && row.marksObtained !== null && row.marksObtained !== undefined);
+
+      if (marksRows.length === 0) {
+        setMessage({ type: 'warning', text: 'Enter marks for at least one student before saving.' });
+        return;
+      }
+
+      const response = await examMarksAPI.bulkSaveSubjectMarks(selectedExam._id, selectedSubjectForEntry, marksRows);
+      setMessage({ type: response.results?.errors?.length ? 'warning' : 'success', text: response.message || 'Subject marks saved.' });
+      await loadExamMarks(selectedExam._id);
+    } catch (error) {
+      console.error('❌ Error saving subject marks:', error);
+      setMessage({
+        type: 'danger',
+        text: error.response?.data?.message || 'Error saving subject marks'
+      });
+    } finally {
+      setSavingSubjectMarks(false);
+    }
   };
 
   const handleEnterMarks = (student) => {
@@ -726,6 +1269,7 @@ const ExamManagement = () => {
         targetStandards: [],
         targetDepartmentStandard: '',
         customStudents: [],
+      accessTeachers: [],
       subjects: [],
       instructions: '',
       venue: '',
@@ -735,6 +1279,20 @@ const ExamManagement = () => {
     setEditingExam(null);
     setSubDepartments([]);
     setBatches([]);
+    setCustomAudienceRules([]);
+    setCustomRuleForm({
+      selectionType: 'department',
+      targetDepartment: '',
+      targetSubDepartments: [],
+      targetBatches: [],
+      targetStandards: [],
+      targetDepartmentStandard: ''
+    });
+    setCustomSubDepartments([]);
+    setCustomBatches([]);
+    setCustomStudentSearch('');
+    setCustomStudentResults([]);
+    setStudentPreview(null);
   };
 
   const resetSubjectForm = () => {
@@ -751,17 +1309,32 @@ const ExamManagement = () => {
     setFilters(prev => ({ ...prev, page }));
   };
 
+  const resultSummary = getResultSummary();
+  const selectedSubjectConfig = selectedExam?.subjects?.find(subjectConfig => getSubjectId(subjectConfig)?.toString() === selectedSubjectForEntry?.toString());
+  const selectedSubjectMaxMarks = selectedSubjectConfig?.maxMarks || 100;
+  const filteredEligibleStudents = eligibleStudents.filter(student => {
+    const searchText = marksSearch.trim().toLowerCase();
+    if (!searchText) return true;
+    return [
+      student.fullName,
+      student.admissionNo,
+      student.department?.name,
+      student.currentStandard
+    ].filter(Boolean).some(value => value.toLowerCase().includes(searchText));
+  });
+
   return (
-    <Container fluid className="py-4">
+    <Container fluid className="exam-management-page py-3 py-md-4 px-2 px-sm-3">
       <Row>
         <Col>
           {/* Header */}
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <div>
-              <h2>📝 Exam Management</h2>
-              <p className="text-muted mb-0">Create exams, select students, and manage marks</p>
+          <div className="exam-page-header mb-4">
+            <div className="exam-title-block">
+              <span className="exam-page-kicker">Academic exams</span>
+              <h2>Exam Management</h2>
+              <p className="text-muted mb-0">Create Veda-wise exams, assign standards, and manage marks.</p>
             </div>
-            <div className="d-flex gap-2">
+            <div className="exam-header-actions">
               {/* View Subjects - Available to all users who can manage exams */}
               {canManage && (
                 <Button 
@@ -780,9 +1353,9 @@ const ExamManagement = () => {
                     }
                   }}
                   disabled={loading}
-                  className="me-2"
+                  className="exam-action-btn"
                 >
-                  📋 View Subjects
+                  View Subjects
                 </Button>
               )}
               {canCreate && (
@@ -791,16 +1364,17 @@ const ExamManagement = () => {
                     variant="outline-primary" 
                     onClick={() => { resetSubjectForm(); setShowSubjectModal(true); }}
                     disabled={loading}
-                    className="me-2"
+                    className="exam-action-btn"
                   >
-                    ➕ Add Subject
+                    Add Subject
                   </Button>
                   <Button 
                     variant="primary" 
                     onClick={() => { resetExamForm(); setShowExamModal(true); }}
                     disabled={loading}
+                    className="exam-action-btn"
                   >
-                    ➕ Create Exam
+                    Create Exam
                   </Button>
                 </>
               )}
@@ -820,13 +1394,22 @@ const ExamManagement = () => {
           )}
 
           {/* Filters */}
-          <Card className="mb-4">
-            <Card.Header>
-              <h6 className="mb-0">🔍 Filters & Search</h6>
+          <Card className="filter-panel exam-filter-card mb-4">
+            <Card.Header className="filter-panel-header d-flex justify-content-between align-items-center">
+              <h6 className="mb-0">Filters & Search</h6>
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={loadExams}
+                disabled={loading}
+                className="exam-refresh-btn"
+              >
+                Refresh
+              </Button>
             </Card.Header>
             <Card.Body>
-              <Row>
-                <Col md={3}>
+              <Row className="filter-grid g-3 align-items-end">
+                <Col xs={12} md={6} xl={3}>
                   <Form.Group>
                     <Form.Label>Academic Year</Form.Label>
                     <AcademicYearFilter
@@ -838,7 +1421,7 @@ const ExamManagement = () => {
                     />
                   </Form.Group>
                 </Col>
-                <Col md={3}>
+                <Col xs={12} md={6} xl={3}>
                   <Form.Group>
                     <Form.Label>Search</Form.Label>
                     <Form.Control
@@ -850,9 +1433,9 @@ const ExamManagement = () => {
                     />
                   </Form.Group>
                 </Col>
-                <Col md={2}>
+                <Col xs={12} sm={6} xl={2}>
                   <Form.Group>
-                    <Form.Label>Department</Form.Label>
+                    <Form.Label>Veda / Department</Form.Label>
                     <Form.Select
                       name="department"
                       value={filters.department}
@@ -867,7 +1450,7 @@ const ExamManagement = () => {
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={2}>
+                <Col xs={12} sm={6} xl={2}>
                   <Form.Group>
                     <Form.Label>Exam Type</Form.Label>
                     <Form.Select
@@ -885,7 +1468,7 @@ const ExamManagement = () => {
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={2}>
+                <Col xs={12} sm={6} xl={2}>
                   <Form.Group>
                     <Form.Label>Status</Form.Label>
                     <Form.Select
@@ -902,27 +1485,14 @@ const ExamManagement = () => {
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={2}>
-                  <Form.Group>
-                    <Form.Label>&nbsp;</Form.Label>
-                    <Button
-                      variant="outline-secondary"
-                      className="d-block"
-                      onClick={loadExams}
-                      disabled={loading}
-                    >
-                      🔄
-                    </Button>
-                  </Form.Group>
-                </Col>
               </Row>
             </Card.Body>
           </Card>
 
           {/* Exams Table */}
-          <Card>
+          <Card className="exam-list-card">
             <Card.Header className="d-flex justify-content-between align-items-center">
-              <h6 className="mb-0">📋 Exams List</h6>
+              <h6 className="mb-0">Exams List</h6>
               <Badge bg="info">
                 {pagination.totalExams || 0} Total Exams
               </Badge>
@@ -939,7 +1509,116 @@ const ExamManagement = () => {
                   <p className="text-muted mb-0">No exams found</p>
                 </div>
               ) : (
-                <div className="table-responsive">
+                <>
+                <div className="exam-mobile-list d-lg-none">
+                  {exams.map(exam => (
+                    <Card key={exam._id} className="exam-mobile-card">
+                      <Card.Body>
+                        <div className="d-flex justify-content-between gap-3 mb-3">
+                          <div className="min-w-0">
+                            <h6 className="exam-mobile-title">{exam.name}</h6>
+                            {exam.description && (
+                              <p className="exam-mobile-description">{exam.description}</p>
+                            )}
+                          </div>
+                          <Badge bg={getStatusVariant(exam.status)} className="exam-status-badge">
+                            {exam.status || 'draft'}
+                          </Badge>
+                        </div>
+
+                        <div className="exam-mobile-meta">
+                          <div>
+                            <span>Type</span>
+                            <strong>{getExamTypeLabel(exam.examType)}</strong>
+                          </div>
+                          <div>
+                            <span>Date</span>
+                            <strong>{new Date(exam.examDate).toLocaleDateString()}</strong>
+                          </div>
+                          <div>
+                            <span>Time</span>
+                            <strong>{exam.startTime} - {exam.endTime}</strong>
+                          </div>
+                          <div>
+                            <span>Students</span>
+                            <strong>{getEligibleLabel(exam)}</strong>
+                          </div>
+                        </div>
+
+                        <div className="exam-mobile-section">
+                          <span className="exam-mobile-label">{getScopeLabel(exam.selectionType)}</span>
+                          <p>{getScopeDetail(exam)}</p>
+                        </div>
+
+                        <div className="exam-mobile-subjects">
+                          {exam.subjects?.length > 0 ? (
+                            exam.subjects.slice(0, 3).map(subj => (
+                              <Badge key={subj.subject._id || subj.subject} bg="info">
+                                {subj.subject.name}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-muted">No subjects</span>
+                          )}
+                          {exam.subjects?.length > 3 && (
+                            <Badge bg="secondary">+{exam.subjects.length - 3}</Badge>
+                          )}
+                        </div>
+
+                        {canManage && (
+                          <>
+                            <Form.Select
+                              size="sm"
+                              value={exam.status || 'draft'}
+                              onChange={(e) => handleStatusChange(exam._id, e.target.value)}
+                              className="mt-3"
+                            >
+                              <option value="draft">Draft</option>
+                              <option value="scheduled">Scheduled</option>
+                              <option value="ongoing">Ongoing</option>
+                              <option value="completed">Completed</option>
+                              <option value="cancelled">Cancelled</option>
+                            </Form.Select>
+                            <div className="exam-mobile-actions">
+                              <Button
+                                variant="outline-info"
+                                size="sm"
+                                onClick={() => navigate(`/reports/exam/${exam._id || exam.id || exam.examId}`)}
+                              >
+                                Results
+                              </Button>
+                              <Button
+                                variant="outline-primary"
+                                size="sm"
+                                onClick={() => handleEdit(exam)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline-success"
+                                size="sm"
+                                onClick={() => handleManageMarks(exam)}
+                              >
+                                Marks
+                              </Button>
+                              {canDelete && (
+                                <Button
+                                  variant="outline-danger"
+                                  size="sm"
+                                  onClick={() => handleDelete(exam._id)}
+                                >
+                                  Delete
+                                </Button>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </Card.Body>
+                    </Card>
+                  ))}
+                </div>
+
+                <div className="table-responsive d-none d-lg-block">
                   <Table striped hover className="mb-0">
                     <thead className="table-dark">
                       <tr>
@@ -967,8 +1646,8 @@ const ExamManagement = () => {
                             </div>
                           </td>
                           <td>
-                            <Badge bg="secondary">
-                              {exam.examType}
+                              <Badge bg="secondary">
+                                {getExamTypeLabel(exam.examType)}
                             </Badge>
                           </td>
                           <td>
@@ -983,39 +1662,15 @@ const ExamManagement = () => {
                           <td>
                             <div>
                               <Badge bg="primary" className="me-1">
-                                {exam.selectionType === 'department' ? 'Department' :
-                                 exam.selectionType === 'departmentStandard' ? 'Department + Standard' :
-                                 exam.selectionType === 'subDepartment' ? 'Sub-Department' :
-                                 exam.selectionType === 'batch' ? 'Batch' :
-                                 exam.selectionType === 'standard' ? 'Standard' : 'Custom'}
+                                {getScopeLabel(exam.selectionType)}
                               </Badge>
                               <br />
                               <small className="text-muted">
-                                {exam.selectionType === 'department' && exam.targetDepartments?.includes('__all__') 
-                                  ? 'All Departments'
-                                  : exam.selectionType === 'department' && exam.targetDepartments?.length > 0
-                                  ? `${exam.targetDepartments.length} department(s)`
-                                  : exam.selectionType === 'department' && exam.targetDepartment
-                                  ? exam.targetDepartment?.name || 'N/A'
-                                  : exam.selectionType === 'departmentStandard' && exam.targetDepartment && exam.targetDepartmentStandard
-                                  ? `${exam.targetDepartment?.name || 'N/A'} - ${exam.targetDepartmentStandard}`
-                                  : exam.selectionType === 'subDepartment' && exam.targetSubDepartments?.length > 0
-                                  ? exam.targetSubDepartments.map(sd => sd.name || sd).join(', ')
-                                  : exam.selectionType === 'batch' && exam.targetBatches?.length > 0
-                                  ? exam.targetBatches.map(b => b.name || b).join(', ')
-                                  : exam.selectionType === 'standard' && exam.targetStandards?.length > 0
-                                  ? exam.targetStandards.join(', ')
-                                  : exam.selectionType === 'custom' && exam.customStudents?.length > 0
-                                  ? `${exam.customStudents.length} students`
-                                  : 'No selection'}
+                                {getScopeDetail(exam)}
                               </small>
                               <br />
                               <small className="text-info">
-                                {exam.eligibleStudentsCount !== undefined 
-                                  ? `${exam.eligibleStudentsCount} eligible`
-                                  : exam.customStudents?.length > 0
-                                  ? `${exam.customStudents.length} students`
-                                  : 'Click to view students'}
+                                {getEligibleLabel(exam)}
                               </small>
                             </div>
                           </td>
@@ -1043,21 +1698,15 @@ const ExamManagement = () => {
                                   fontWeight: '500'
                                 }}
                               >
-                                <option value="draft">📝 Draft</option>
-                                <option value="scheduled">📅 Scheduled</option>
-                                <option value="ongoing">⏳ Ongoing</option>
-                                <option value="completed">✅ Completed</option>
-                                <option value="cancelled">❌ Cancelled</option>
+	                                <option value="draft">Draft</option>
+	                                <option value="scheduled">Scheduled</option>
+	                                <option value="ongoing">Ongoing</option>
+	                                <option value="completed">Completed</option>
+	                                <option value="cancelled">Cancelled</option>
                               </Form.Select>
                             ) : (
                             <Badge 
-                              bg={
-                                exam.status === 'draft' ? 'secondary' :
-                                exam.status === 'scheduled' ? 'primary' :
-                                exam.status === 'ongoing' ? 'warning' :
-                                exam.status === 'completed' ? 'success' :
-                                'danger'
-                              }
+	                              bg={getStatusVariant(exam.status)}
                             >
                               {exam.status}
                             </Badge>
@@ -1072,7 +1721,7 @@ const ExamManagement = () => {
                                   onClick={() => navigate(`/reports/exam/${exam._id || exam.id || exam.examId}`)}
                                   title="View exam results"
                                 >
-                                  📋 Results
+	                                  Results
                                 </Button>
                                 <Button
                                   variant="outline-primary"
@@ -1080,7 +1729,7 @@ const ExamManagement = () => {
                                   onClick={() => handleEdit(exam)}
                                   title="Edit exam"
                                 >
-                                  ✏️
+	                                  Edit
                                 </Button>
                                 <Button
                                   variant="outline-success"
@@ -1088,7 +1737,7 @@ const ExamManagement = () => {
                                   onClick={() => handleManageMarks(exam)}
                                   title="Manage marks"
                                 >
-                                  📊
+	                                  Marks
                                 </Button>
                                 {canDelete && (
                                   <Button
@@ -1097,7 +1746,7 @@ const ExamManagement = () => {
                                     onClick={() => handleDelete(exam._id)}
                                     title="Delete exam"
                                   >
-                                    🗑️
+	                                    Delete
                                   </Button>
                                 )}
                               </div>
@@ -1107,7 +1756,8 @@ const ExamManagement = () => {
                       ))}
                     </tbody>
                   </Table>
-                </div>
+	                </div>
+                </>
               )}
 
               {/* Pagination */}
@@ -1165,18 +1815,18 @@ const ExamManagement = () => {
       </Row>
 
       {/* Create/Edit Exam Modal */}
-      <Modal show={showExamModal} onHide={() => setShowExamModal(false)} size="xl">
+      <Modal show={showExamModal} onHide={() => setShowExamModal(false)} size="xl" fullscreen="sm-down" scrollable dialogClassName="exam-modal-shell">
         <Modal.Header closeButton>
           <Modal.Title>
-            {editingExam ? '✏️ Edit Exam' : '➕ Create New Exam'}
+            {editingExam ? 'Edit Exam' : 'Create New Exam'}
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleExamSubmit}>
           <Modal.Body>
-            <Tabs defaultActiveKey="basic" className="mb-3">
+            <Tabs defaultActiveKey="basic" className="exam-form-tabs mb-3" justify>
               {/* Basic Information Tab */}
-              <Tab eventKey="basic" title="📝 Basic Info">
-                <Row>
+              <Tab eventKey="basic" title="Basic Info">
+                <Row className="g-3">
                   <Col md={6}>
                     <Form.Group className="mb-3">
                       <Form.Label>Exam Name *</Form.Label>
@@ -1300,50 +1950,85 @@ const ExamManagement = () => {
               </Tab>
 
               {/* Student Selection Tab */}
-              <Tab eventKey="students" title="👥 Student Selection">
-                <Row>
-                  <Col md={12}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Selection Type *</Form.Label>
-                      <Form.Select
-                        name="selectionType"
-                        value={examFormData.selectionType}
-                        onChange={handleExamFormChange}
-                        required
-                      >
-                        <option value="department">Entire Department</option>
-                        <option value="departmentStandard">Department + Standard</option>
-                        <option value="subDepartment">Sub-Department(s)</option>
-                        <option value="batch">Batch(es)</option>
-                        <option value="standard">Standard(s)</option>
-                        <option value="custom">Custom Student Selection</option>
-                      </Form.Select>
-                    </Form.Group>
-                  </Col>
+              <Tab eventKey="students" title="Students">
+                <div className="exam-wizard-panel">
+                  <div className="exam-wizard-heading">
+                    <div>
+                      <span>Step 2</span>
+                      <h5>Audience Selection</h5>
+                      <p>Choose who this exam is announced for. Use custom selection when you need mixed Veda, Shakha, Batch, or manual students.</p>
+                    </div>
+                  </div>
 
+                  <div className="selection-mode-grid">
+                    {[
+                      { value: 'department', label: 'Entire Veda', meta: 'One or more Vedas' },
+                      { value: 'departmentStandard', label: 'Veda + Standard', meta: 'One Veda, one class level' },
+                      { value: 'subDepartment', label: 'Shakha(s)', meta: 'One Veda, multiple Shakhas' },
+                      { value: 'batch', label: 'Batch(es)', meta: 'One Veda, multiple batches' },
+                      { value: 'standard', label: 'Standard(s)', meta: 'Across Vedas by standard' },
+                      { value: 'custom', label: 'Custom Audience', meta: 'Mix rules and manual students' }
+                    ].map(mode => (
+                      <button
+                        type="button"
+                        key={mode.value}
+                        className={`selection-mode-card ${examFormData.selectionType === mode.value ? 'selected' : ''}`}
+                        onClick={() => {
+                          setSingleExamField('selectionType', mode.value, {
+                            targetDepartment: '',
+                            targetSubDepartments: [],
+                            targetBatches: [],
+                            targetStandards: [],
+                            targetDepartmentStandard: '',
+                            customStudents: []
+                          });
+                        }}
+                      >
+                        <strong>{mode.label}</strong>
+                        <span>{mode.meta}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <Row className="g-3 mt-1">
                   {examFormData.selectionType === 'department' && (
                     <Col md={12}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Departments *</Form.Label>
-                        <Form.Select
-                          multiple
-                          name="targetDepartments"
-                          value={examFormData.targetDepartments}
-                          onChange={handleExamFormChange}
-                          size={6}
-                          required
-                        >
-                          <option value="__all__">All Departments</option>
-                          {departments.map(dept => (
-                            <option key={dept._id} value={dept._id}>
-                              {dept.name} ({dept.code})
-                            </option>
-                          ))}
-                        </Form.Select>
-                        <Form.Text className="text-muted">
-                          Hold Ctrl/Cmd to select multiple departments, or select "All Departments" to include all students
-                        </Form.Text>
-                      </Form.Group>
+                      <div className="exam-field-card">
+                        <div className="field-card-header">
+                          <div>
+                            <h6>Veda</h6>
+                            <p>Select one or more Vedas, or choose all.</p>
+                          </div>
+                          <Button
+                            variant="outline-secondary"
+                            size="sm"
+                            onClick={() => setSingleExamField('targetDepartments', ['__all__'])}
+                          >
+                            Select All
+                          </Button>
+                        </div>
+                        <OptionTileGrid
+                          items={[{ value: '__all__', name: 'All Vedas', code: 'ALL' }, ...departments]}
+                          selected={examFormData.targetDepartments}
+                          onToggle={(value) => {
+                            if (value === '__all__') {
+                              setSingleExamField('targetDepartments', examFormData.targetDepartments.includes('__all__') ? [] : ['__all__']);
+                              return;
+                            }
+                            setExamFormData(prev => {
+                              const current = (prev.targetDepartments || []).filter(id => id !== '__all__');
+                              const next = current.includes(value)
+                                ? current.filter(id => id !== value)
+                                : [...current, value];
+                              return { ...prev, targetDepartments: next };
+                            });
+                            setStudentPreview(null);
+                          }}
+                          getLabel={(dept) => dept.name}
+                          getMeta={(dept) => dept.code}
+                          columns="veda"
+                        />
+                      </div>
                     </Col>
                   )}
 
@@ -1351,14 +2036,14 @@ const ExamManagement = () => {
                     <>
                       <Col md={6}>
                         <Form.Group className="mb-3">
-                          <Form.Label>Department *</Form.Label>
+	                          <Form.Label>Veda *</Form.Label>
                           <Form.Select
                             name="targetDepartment"
                             value={examFormData.targetDepartment}
                             onChange={handleExamFormChange}
                             required
                           >
-                            <option value="">Select Department</option>
+	                            <option value="">Select Veda</option>
                             {departments.map(dept => (
                               <option key={dept._id} value={dept._id}>
                                 {dept.name} ({dept.code})
@@ -1384,7 +2069,7 @@ const ExamManagement = () => {
                             ))}
                           </Form.Select>
                           <Form.Text className="text-muted">
-                            Select one standard. Only students from the selected department with this standard will be included.
+	                            Only students in this Veda and standard will be included.
                           </Form.Text>
                         </Form.Group>
                       </Col>
@@ -1395,14 +2080,14 @@ const ExamManagement = () => {
                     <>
                       <Col md={6}>
                         <Form.Group className="mb-3">
-                          <Form.Label>Department *</Form.Label>
+	                          <Form.Label>Veda *</Form.Label>
                           <Form.Select
                             name="targetDepartment"
                             value={examFormData.targetDepartment}
                             onChange={handleExamFormChange}
                             required
                           >
-                            <option value="">Select Department</option>
+	                            <option value="">Select Veda</option>
                             {departments.map(dept => (
                               <option key={dept._id} value={dept._id}>
                                 {dept.name} ({dept.code})
@@ -1412,27 +2097,23 @@ const ExamManagement = () => {
                         </Form.Group>
                       </Col>
                       <Col md={6}>
-                        <Form.Group className="mb-3">
-                          <Form.Label>Sub-Departments *</Form.Label>
-                          <Form.Select
-                            multiple
-                            name="targetSubDepartments"
-                            value={examFormData.targetSubDepartments}
-                            onChange={handleExamFormChange}
+                        <div className="exam-field-card h-100">
+                          <div className="field-card-header">
+                            <div>
+                              <h6>Shakha</h6>
+                              <p>Select one or more Shakhas inside the selected Veda.</p>
+                            </div>
+                          </div>
+                          <OptionTileGrid
+                            items={subDepartments}
+                            selected={examFormData.targetSubDepartments}
+                            onToggle={(value) => toggleArrayValue('targetSubDepartments', value)}
+                            getLabel={(subDept) => subDept.name}
+                            getMeta={(subDept) => subDept.code}
+                            emptyText={examFormData.targetDepartment ? 'No Shakhas found for this Veda.' : 'Select a Veda first.'}
                             disabled={!examFormData.targetDepartment}
-                            size={4}
-                            required
-                          >
-                            {subDepartments.map(subDept => (
-                              <option key={subDept._id} value={subDept._id}>
-                                {subDept.name} ({subDept.code})
-                              </option>
-                            ))}
-                          </Form.Select>
-                          <Form.Text className="text-muted">
-                            Hold Ctrl/Cmd to select multiple sub-departments
-                          </Form.Text>
-                        </Form.Group>
+                          />
+                        </div>
                       </Col>
                     </>
                   )}
@@ -1441,14 +2122,14 @@ const ExamManagement = () => {
                     <>
                       <Col md={6}>
                         <Form.Group className="mb-3">
-                          <Form.Label>Department *</Form.Label>
+	                          <Form.Label>Veda *</Form.Label>
                           <Form.Select
                             name="targetDepartment"
                             value={examFormData.targetDepartment}
                             onChange={handleExamFormChange}
                             required
                           >
-                            <option value="">Select Department</option>
+	                            <option value="">Select Veda</option>
                             {departments.map(dept => (
                               <option key={dept._id} value={dept._id}>
                                 {dept.name} ({dept.code})
@@ -1458,122 +2139,409 @@ const ExamManagement = () => {
                         </Form.Group>
                       </Col>
                       <Col md={6}>
-                        <Form.Group className="mb-3">
-                          <Form.Label>Batches *</Form.Label>
-                          <Form.Select
-                            multiple
-                            name="targetBatches"
-                            value={examFormData.targetBatches}
-                            onChange={handleExamFormChange}
+                        <div className="exam-field-card h-100">
+                          <div className="field-card-header">
+                            <div>
+                              <h6>Batches</h6>
+                              <p>Select one or more batches.</p>
+                            </div>
+                          </div>
+                          <OptionTileGrid
+                            items={batches}
+                            selected={examFormData.targetBatches}
+                            onToggle={(value) => toggleArrayValue('targetBatches', value)}
+                            getLabel={(batch) => batch.name}
+                            getMeta={(batch) => `${batch.code || 'Batch'} - ${batch.academicYear || 'Year not set'}`}
+                            emptyText={examFormData.targetDepartment ? 'No batches found for this Veda.' : 'Select a Veda first.'}
                             disabled={!examFormData.targetDepartment}
-                            size={4}
-                            required
-                          >
-                            {batches.map(batch => (
-                              <option key={batch._id} value={batch._id}>
-                                {batch.name} ({batch.code}) - {batch.academicYear}
-                              </option>
-                            ))}
-                          </Form.Select>
-                          <Form.Text className="text-muted">
-                            Hold Ctrl/Cmd to select multiple batches
-                          </Form.Text>
-                        </Form.Group>
+                          />
+                        </div>
                       </Col>
                     </>
                   )}
 
                   {examFormData.selectionType === 'standard' && (
                     <Col md={12}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Select Standard(s) *</Form.Label>
-                        <Form.Select
-                          multiple
-                          name="targetStandards"
-                          value={examFormData.targetStandards}
-                          onChange={handleExamFormChange}
-                          size={6}
-                          required
-                        >
-                          {STANDARD_OPTIONS.map(standard => (
-                            <option key={standard} value={standard}>
-                              {standard}
-                            </option>
-                          ))}
-                        </Form.Select>
-                        <Form.Text className="text-muted">
-                          Hold Ctrl/Cmd to select multiple standards. Students with matching current standard will be included.
-                        </Form.Text>
-                      </Form.Group>
+                      <div className="exam-field-card">
+                        <div className="field-card-header">
+                          <div>
+                            <h6>Standards</h6>
+                            <p>Select one or more standards. Students with matching current standard will be included.</p>
+                          </div>
+                        </div>
+                        <OptionTileGrid
+                          items={STANDARD_OPTIONS.map(standard => ({ value: standard, name: standard }))}
+                          selected={examFormData.targetStandards}
+                          onToggle={(value) => toggleArrayValue('targetStandards', value)}
+                          getLabel={(standard) => standard.name}
+                          columns="standard"
+                        />
+                      </div>
                     </Col>
                   )}
 
                   {examFormData.selectionType === 'custom' && (
                     <Col md={12}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Custom Students *</Form.Label>
-                        <Form.Control
-                          as="textarea"
-                          rows={3}
-                          placeholder="Custom student selection will be implemented with a student picker component"
-                          disabled
-                        />
-                        <Form.Text className="text-muted">
-                          Custom student selection feature coming soon
-                        </Form.Text>
-                      </Form.Group>
+                      <div className="custom-audience-builder">
+                        <div className="custom-audience-header">
+                          <div>
+                            <h6>Custom Audience Builder</h6>
+                            <p>Mix Veda, Shakha, Batch, Standard, and manually selected students in one exam.</p>
+                          </div>
+                          <Badge bg="primary">
+                            {customAudienceRules.length} rules + {examFormData.customStudents.length} manual
+                          </Badge>
+                        </div>
+
+                        <Row className="g-3">
+                          <Col lg={7}>
+                            <div className="audience-builder-panel">
+                              <div className="audience-panel-title">Add students by rule</div>
+                              <Row className="g-2">
+                                <Col md={6}>
+                                  <Form.Group>
+                                    <Form.Label>Rule Type</Form.Label>
+                                    <Form.Select
+                                      name="selectionType"
+                                      value={customRuleForm.selectionType}
+                                      onChange={handleCustomRuleChange}
+                                    >
+                                      <option value="department">Entire Veda</option>
+                                      <option value="departmentStandard">Veda + Standard</option>
+                                      <option value="subDepartment">Shakha(s)</option>
+                                      <option value="batch">Batch(es)</option>
+                                      <option value="standard">Standard(s)</option>
+                                    </Form.Select>
+                                  </Form.Group>
+                                </Col>
+
+                                {customRuleForm.selectionType !== 'standard' && (
+                                  <Col md={6}>
+                                    <Form.Group>
+                                      <Form.Label>Veda</Form.Label>
+                                      <Form.Select
+                                        name="targetDepartment"
+                                        value={customRuleForm.targetDepartment}
+                                        onChange={handleCustomRuleChange}
+                                      >
+                                        <option value="">Select Veda</option>
+                                        {departments.map(dept => (
+                                          <option key={dept._id} value={dept._id}>
+                                            {dept.name} ({dept.code})
+                                          </option>
+                                        ))}
+                                      </Form.Select>
+                                    </Form.Group>
+                                  </Col>
+                                )}
+
+                                {customRuleForm.selectionType === 'subDepartment' && (
+                                  <Col md={12}>
+                                    <div className="mini-option-block">
+                                      <Form.Label>Shakha</Form.Label>
+                                      <OptionTileGrid
+                                        items={customSubDepartments}
+                                        selected={customRuleForm.targetSubDepartments}
+                                        onToggle={(value) => {
+                                          setCustomRuleForm(prev => ({
+                                            ...prev,
+                                            targetSubDepartments: prev.targetSubDepartments.includes(value)
+                                              ? prev.targetSubDepartments.filter(id => id !== value)
+                                              : [...prev.targetSubDepartments, value]
+                                          }));
+                                        }}
+                                        getLabel={(subDept) => subDept.name}
+                                        getMeta={(subDept) => subDept.code}
+                                        emptyText={customRuleForm.targetDepartment ? 'No Shakhas found.' : 'Select a Veda first.'}
+                                        disabled={!customRuleForm.targetDepartment}
+                                      />
+                                    </div>
+                                  </Col>
+                                )}
+
+                                {customRuleForm.selectionType === 'batch' && (
+                                  <Col md={12}>
+                                    <div className="mini-option-block">
+                                      <Form.Label>Batch</Form.Label>
+                                      <OptionTileGrid
+                                        items={customBatches}
+                                        selected={customRuleForm.targetBatches}
+                                        onToggle={(value) => {
+                                          setCustomRuleForm(prev => ({
+                                            ...prev,
+                                            targetBatches: prev.targetBatches.includes(value)
+                                              ? prev.targetBatches.filter(id => id !== value)
+                                              : [...prev.targetBatches, value]
+                                          }));
+                                        }}
+                                        getLabel={(batch) => batch.name}
+                                        getMeta={(batch) => `${batch.code || 'Batch'} - ${batch.academicYear || 'Year not set'}`}
+                                        emptyText={customRuleForm.targetDepartment ? 'No batches found.' : 'Select a Veda first.'}
+                                        disabled={!customRuleForm.targetDepartment}
+                                      />
+                                    </div>
+                                  </Col>
+                                )}
+
+                                {customRuleForm.selectionType === 'departmentStandard' && (
+                                  <Col md={6}>
+                                    <Form.Group>
+                                      <Form.Label>Standard</Form.Label>
+                                      <Form.Select
+                                        name="targetDepartmentStandard"
+                                        value={customRuleForm.targetDepartmentStandard}
+                                        onChange={handleCustomRuleChange}
+                                      >
+                                        <option value="">Select Standard</option>
+                                        {STANDARD_OPTIONS.map(standard => (
+                                          <option key={standard} value={standard}>{standard}</option>
+                                        ))}
+                                      </Form.Select>
+                                    </Form.Group>
+                                  </Col>
+                                )}
+
+                                {customRuleForm.selectionType === 'standard' && (
+                                  <Col md={12}>
+                                    <div className="mini-option-block">
+                                      <Form.Label>Standard</Form.Label>
+                                      <OptionTileGrid
+                                        items={STANDARD_OPTIONS.map(standard => ({ value: standard, name: standard }))}
+                                        selected={customRuleForm.targetStandards}
+                                        onToggle={(value) => {
+                                          setCustomRuleForm(prev => ({
+                                            ...prev,
+                                            targetStandards: prev.targetStandards.includes(value)
+                                              ? prev.targetStandards.filter(id => id !== value)
+                                              : [...prev.targetStandards, value]
+                                          }));
+                                        }}
+                                        getLabel={(standard) => standard.name}
+                                        columns="standard"
+                                      />
+                                    </div>
+                                  </Col>
+                                )}
+
+                                <Col md={12}>
+                                  <Button variant="outline-primary" onClick={handleAddCustomRule}>
+                                    Add Rule
+                                  </Button>
+                                </Col>
+                              </Row>
+
+                              <div className="audience-rule-list">
+                                {customAudienceRules.length === 0 ? (
+                                  <p className="text-muted mb-0">No rules added yet.</p>
+                                ) : (
+                                  customAudienceRules.map((rule, index) => (
+                                    <div key={`${rule.selectionType}-${index}`} className="audience-rule-chip">
+                                      <span>{getRuleLabel(rule)}</span>
+                                      <Button
+                                        variant="link"
+                                        size="sm"
+                                        onClick={() => {
+                                          setCustomAudienceRules(prev => prev.filter((_, ruleIndex) => ruleIndex !== index));
+                                          setStudentPreview(null);
+                                        }}
+                                      >
+                                        Remove
+                                      </Button>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+                          </Col>
+
+                          <Col lg={5}>
+                            <div className="audience-builder-panel">
+                              <div className="audience-panel-title">Manual student add</div>
+                              <div className="student-search-row">
+                                <Form.Control
+                                  value={customStudentSearch}
+                                  onChange={(e) => setCustomStudentSearch(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleSearchCustomStudents();
+                                    }
+                                  }}
+                                  placeholder="Search name or admission no"
+                                />
+                                <Button
+                                  variant="outline-secondary"
+                                  onClick={handleSearchCustomStudents}
+                                  disabled={customStudentSearchLoading}
+                                >
+                                  {customStudentSearchLoading ? '...' : 'Search'}
+                                </Button>
+                              </div>
+
+                              <div className="student-picker-results">
+                                {customStudentResults.length === 0 ? (
+                                  <p className="text-muted mb-0">Search to add specific students.</p>
+                                ) : (
+                                  customStudentResults.map(student => {
+                                    const studentId = getStudentId(student);
+                                    const selected = examFormData.customStudents.includes(studentId);
+                                    return (
+                                      <div key={studentId} className="student-picker-row">
+                                        <div>
+                                          <strong>{getStudentName(student)}</strong>
+                                          <span>{getStudentMeta(student) || 'No academic details'}</span>
+                                        </div>
+                                        <Button
+                                          variant={selected ? 'success' : 'outline-primary'}
+                                          size="sm"
+                                          onClick={() => selected ? removeCustomStudent(studentId) : addCustomStudent(student)}
+                                        >
+                                          {selected ? 'Added' : 'Add'}
+                                        </Button>
+                                      </div>
+                                    );
+                                  })
+                                )}
+                              </div>
+                            </div>
+                          </Col>
+
+                          <Col md={12}>
+                            <div className="selected-students-panel">
+                              <div className="audience-panel-title">Manually selected students</div>
+                              {selectedCustomStudents.length === 0 ? (
+                                <p className="text-muted mb-0">No manual students selected.</p>
+                              ) : (
+                                <div className="selected-student-grid">
+                                  {selectedCustomStudents.map(student => {
+                                    const studentId = getStudentId(student);
+                                    return (
+                                      <div key={studentId} className="selected-student-chip">
+                                        <span>
+                                          <strong>{getStudentName(student)}</strong>
+                                          <small>{getStudentMeta(student)}</small>
+                                        </span>
+                                        <Button variant="link" size="sm" onClick={() => removeCustomStudent(studentId)}>
+                                          Remove
+                                        </Button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </Col>
+                        </Row>
+                      </div>
                     </Col>
                   )}
-                </Row>
+
+                  <Col md={12}>
+                    <Card className="exam-audience-preview">
+                      <Card.Body>
+                        <div className="exam-preview-header">
+                          <div>
+                            <h6>Audience Preview</h6>
+                            <p>Check the exact student group before announcing the exam.</p>
+                          </div>
+                          <Button
+                            variant="outline-primary"
+                            onClick={handlePreviewStudents}
+                            disabled={previewLoading}
+                          >
+                            {previewLoading ? 'Checking...' : 'Preview Students'}
+                          </Button>
+                        </div>
+
+                        {studentPreview?.error && (
+                          <Alert variant="danger" className="mb-0 mt-3">
+                            {studentPreview.error}
+                          </Alert>
+                        )}
+
+                        {studentPreview && !studentPreview.error && (
+                          <div className="exam-preview-results">
+                            <div className="exam-preview-count">
+                              <strong>{studentPreview.totalStudents}</strong>
+                              <span>students matched</span>
+                            </div>
+                            <div className="exam-preview-list">
+                              {studentPreview.students.length > 0 ? (
+                                studentPreview.students.map(student => (
+                                  <div key={student._id} className="exam-preview-student">
+                                    <strong>{student.fullName}</strong>
+                                    <span>
+                                      {student.admissionNo || 'No admission no'}
+                                      {student.currentStandard ? ` | ${student.currentStandard}` : ''}
+                                    </span>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-muted mb-0">No active students match this selection.</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </Card.Body>
+	                    </Card>
+	                  </Col>
+	                </Row>
+                </div>
               </Tab>
 
               {/* Subjects Tab */}
-              <Tab eventKey="subjects" title="📚 Subjects">
-                <Row>
+              <Tab eventKey="subjects" title="Subjects">
+                <div className="exam-wizard-panel">
+                  <div className="exam-wizard-heading">
+                    <div>
+                      <span>Step 3</span>
+                      <h5>Subjects & Marking</h5>
+                      <p>Select subjects with one click. The marks configuration appears immediately below.</p>
+                    </div>
+                    <Badge bg="primary">{examFormData.subjects.length} selected</Badge>
+                  </div>
+
+                  <Row className="g-3">
                   <Col md={12}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Subjects *</Form.Label>
-                      <Form.Select
-                        multiple
-                        name="subjects"
-                        value={examFormData.subjects.map(s => s.subject)}
-                        onChange={handleExamFormChange}
-                        size={6}
-                        required
-                      >
-                        {subjects.map(subject => (
-                          <option key={subject._id} value={subject._id}>
-                            {subject.name} ({subject.code}) - {subject.category}
-                          </option>
-                        ))}
-                      </Form.Select>
-                      <Form.Text className="text-muted">
-                        Hold Ctrl/Cmd to select multiple subjects. Default marks: 100 max, 40 passing.
-                      </Form.Text>
-                    </Form.Group>
+                    <div className="subject-picker-grid">
+                      {subjects.length === 0 ? (
+                        <div className="option-empty-state">No subjects available. Add subjects first.</div>
+                      ) : (
+                        subjects.map(subject => {
+                          const selected = examFormData.subjects.some(item => item.subject === subject._id);
+                          return (
+                            <button
+                              type="button"
+                              key={subject._id}
+                              className={`subject-picker-card ${selected ? 'selected' : ''}`}
+                              onClick={() => toggleSubject(subject._id)}
+                            >
+                              <span className="option-check">{selected ? 'Selected' : ''}</span>
+                              <strong>{subject.name}</strong>
+                              <small>{subject.code} - {getSubjectCategoryLabel(subject.category)}</small>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
                   </Col>
 
                   {/* Division-based Marking Option */}
                   <Col md={12}>
-                    <hr className="my-3" />
-                    <Card className="mb-3" style={{ border: '2px solid #0d6efd', backgroundColor: '#f8f9fa' }}>
-                      <Card.Body>
-                        <Form.Group className="mb-3">
-                          <Form.Check
-                            type="checkbox"
-                            id="useDivisionsCheckbox"
-                            name="useDivisions"
-                            label={<strong>Use Division-based Marking (10 divisions × 10 marks = 100 total)</strong>}
-                            checked={examFormData.useDivisions}
-                            onChange={handleExamFormChange}
-                            style={{ fontSize: '1.1rem' }}
-                          />
-                          <Form.Text className="text-muted d-block mt-2">
-                            <i className="bi bi-info-circle"></i> Enable this to divide marks into 10 fixed divisions (Division 1 to Division 10), each worth 10 marks
-                          </Form.Text>
-                        </Form.Group>
-                      </Card.Body>
-                    </Card>
+                    <label className={`exam-toggle-card ${examFormData.useDivisions ? 'is-selected' : ''}`} htmlFor="useDivisionsCheckbox">
+                      <Form.Check
+                        type="switch"
+                        id="useDivisionsCheckbox"
+                        name="useDivisions"
+                        checked={examFormData.useDivisions}
+                        onChange={handleExamFormChange}
+                        className="exam-toggle-switch"
+                      />
+                      <span className="exam-toggle-copy">
+                        <strong>Use division-based marking</strong>
+                        <small>Each subject is divided into 10 fixed divisions worth 10 marks each.</small>
+                      </span>
+                    </label>
                   </Col>
 
                   {/* Division Configuration Info */}
@@ -1592,12 +2560,12 @@ const ExamManagement = () => {
 
                   {examFormData.subjects.length > 0 && (
                     <Col md={12}>
-                      <h6>Selected Subjects Configuration:</h6>
+	                      <h6>Selected Subjects</h6>
                       <ListGroup>
                         {examFormData.subjects.map((subj, index) => {
                           const subject = subjects.find(s => s._id === subj.subject);
                           return (
-                            <ListGroup.Item key={index} className="d-flex justify-content-between align-items-center">
+	                            <ListGroup.Item key={index} className="exam-subject-item">
                               <div>
                                 <strong>{subject?.name}</strong> ({subject?.code})
                                 {examFormData.useDivisions && (
@@ -1608,7 +2576,7 @@ const ExamManagement = () => {
                                   </div>
                                 )}
                               </div>
-                              <div className="d-flex gap-2 align-items-center">
+	                              <div className="exam-subject-meta">
                                 <small>Max: {subj.maxMarks}</small>
                                 <small>Pass: {subj.passingMarks}</small>
                                 <Badge bg="secondary">Weight: {subj.weightage}</Badge>
@@ -1622,12 +2590,54 @@ const ExamManagement = () => {
                       </ListGroup>
                     </Col>
                   )}
+                  </Row>
+                </div>
+              </Tab>
+
+              {/* Additional Info Tab */}
+              <Tab eventKey="access" title="Teacher Access">
+                <Row className="g-3">
+                  <Col md={12}>
+                    <Card className="exam-option-card">
+                      <Card.Body>
+                        <h6 className="mb-2">Automatic Access</h6>
+                        <p className="text-muted mb-0">
+                          Admin, Principal, Coordinator, Veda/Shakha assigned teachers, and subject teachers should get exam access automatically based on the selected audience and subjects.
+                        </p>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                  <Col md={12}>
+                    <div className="exam-field-card">
+                      <div className="field-card-header">
+                        <div>
+                          <h6>Extra Teachers With Access</h6>
+                          <p>Use this for external examiners, substitute teachers, or anyone who needs direct access beyond normal assignments.</p>
+                        </div>
+                        <Badge bg="primary">{examFormData.accessTeachers.length} selected</Badge>
+                      </div>
+                      <OptionTileGrid
+                        items={teachers.map(teacher => ({
+                          ...teacher,
+                          value: getTeacherUserId(teacher),
+                          label: getTeacherName(teacher),
+                          meta: teacher.user?.email || teacher.email || teacher.role || 'Teacher'
+                        }))}
+                        selected={examFormData.accessTeachers}
+                        onToggle={(value) => toggleArrayValue('accessTeachers', value)}
+                        getLabel={(teacher) => teacher.label}
+                        getMeta={(teacher) => teacher.meta}
+                        emptyText="No active teachers found."
+                        columns="teacher"
+                      />
+                    </div>
+                  </Col>
                 </Row>
               </Tab>
 
               {/* Additional Info Tab */}
-              <Tab eventKey="additional" title="ℹ️ Additional Info">
-                <Row>
+              <Tab eventKey="additional" title="Additional">
+                <Row className="g-3">
                   <Col md={12}>
                     <Form.Group className="mb-3">
                       <Form.Label>Instructions</Form.Label>
@@ -1677,9 +2687,9 @@ const ExamManagement = () => {
       </Modal>
 
       {/* Create Subject Modal */}
-      <Modal show={showSubjectModal} onHide={() => setShowSubjectModal(false)}>
+      <Modal show={showSubjectModal} onHide={() => setShowSubjectModal(false)} scrollable>
         <Modal.Header closeButton>
-          <Modal.Title>➕ Add New Subject</Modal.Title>
+          <Modal.Title>Add New Subject</Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubjectSubmit}>
           <Modal.Body>
@@ -1768,9 +2778,9 @@ const ExamManagement = () => {
       </Modal>
 
       {/* View Subjects Modal */}
-      <Modal show={showSubjectsListModal} onHide={() => setShowSubjectsListModal(false)} size="lg">
+      <Modal show={showSubjectsListModal} onHide={() => setShowSubjectsListModal(false)} size="lg" scrollable>
         <Modal.Header closeButton>
-          <Modal.Title>📚 All Subjects</Modal.Title>
+          <Modal.Title>All Subjects</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {loading && (
@@ -1818,7 +2828,7 @@ const ExamManagement = () => {
                             onClick={() => handleDeleteSubject(subject._id)}
                             disabled={loading}
                           >
-                            🗑️ Delete
+                            Delete
                           </Button>
                         )}
                         {!subject.isActive && (
@@ -1845,22 +2855,209 @@ const ExamManagement = () => {
                 setShowSubjectModal(true);
               }}
             >
-              ➕ Add New Subject
+              Add New Subject
             </Button>
           )}
         </Modal.Footer>
       </Modal>
 
       {/* Manage Marks Modal */}
-      <Modal show={showMarksModal} onHide={() => setShowMarksModal(false)} size="xl">
+      <Modal show={showMarksModal} onHide={() => setShowMarksModal(false)} size="xl" fullscreen="sm-down" scrollable>
         <Modal.Header closeButton>
           <Modal.Title>
-            📊 Manage Marks - {selectedExam?.name}
+            Manage Marks - {selectedExam?.name}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <Tabs defaultActiveKey="students" className="mb-3">
-            <Tab eventKey="students" title={`👥 Eligible Students (${eligibleStudents.length})`}>
+          <div className="marks-summary-grid mb-3">
+            <div className="marks-summary-card">
+              <span>Total Students</span>
+              <strong>{resultSummary.totalStudents}</strong>
+            </div>
+            <div className="marks-summary-card">
+              <span>Marks Entered</span>
+              <strong>{resultSummary.enteredCount}</strong>
+            </div>
+            <div className="marks-summary-card">
+              <span>Passed</span>
+              <strong>{resultSummary.passedCount}</strong>
+            </div>
+            <div className="marks-summary-card">
+              <span>Average</span>
+              <strong>{resultSummary.average.toFixed(1)}%</strong>
+            </div>
+          </div>
+
+          <Tabs defaultActiveKey="subject-entry" className="mb-3">
+            <Tab eventKey="overview" title="Result Overview">
+              <Row className="g-3">
+                <Col lg={7}>
+                  <Card>
+                    <Card.Header>
+                      <h6 className="mb-0">Subject Performance</h6>
+                    </Card.Header>
+                    <Card.Body className="p-0">
+                      <div className="table-responsive">
+                        <Table hover className="mb-0">
+                          <thead>
+                            <tr>
+                              <th>Subject</th>
+                              <th>Entered</th>
+                              <th>Average</th>
+                              <th>Passed</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {resultSummary.subjectSummaries.map(subject => (
+                              <tr key={subject.id}>
+                                <td><strong>{subject.name}</strong></td>
+                                <td>{subject.entered}/{resultSummary.totalStudents}</td>
+                                <td>{subject.average.toFixed(1)}%</td>
+                                <td>{subject.passCount}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </Table>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+                <Col lg={5}>
+                  <Card>
+                    <Card.Header>
+                      <h6 className="mb-0">Top Students</h6>
+                    </Card.Header>
+                    <Card.Body>
+                      <div className="marks-rank-list">
+                        {resultSummary.topStudents.length > 0 ? (
+                          resultSummary.topStudents.map((mark, index) => (
+                            <div key={mark._id} className="marks-rank-row">
+                              <span>{index + 1}</span>
+                              <div>
+                                <strong>{mark.student?.fullName}</strong>
+                                <small>{mark.student?.admissionNo}</small>
+                              </div>
+                              <Badge bg={mark.isPassed ? 'success' : 'danger'}>
+                                {mark.overallPercentage?.toFixed(1)}%
+                              </Badge>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-muted mb-0">Marks have not been entered yet.</p>
+                        )}
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              </Row>
+            </Tab>
+
+            <Tab eventKey="subject-entry" title="Subject Entry">
+              <Card className="marks-entry-panel">
+                <Card.Body>
+                  <Row className="g-3 align-items-end mb-3">
+                    <Col md={5}>
+                      <Form.Group>
+                        <Form.Label>Subject</Form.Label>
+                        <Form.Select
+                          value={selectedSubjectForEntry}
+                          onChange={(e) => setSelectedSubjectForEntry(e.target.value)}
+                        >
+                          {selectedExam?.subjects?.map(subjectConfig => {
+                            const subjectId = getSubjectId(subjectConfig);
+                            return (
+                              <option key={subjectId} value={subjectId}>
+                                {getSubjectName(subjectConfig)} ({subjectConfig.maxMarks || 100} marks)
+                              </option>
+                            );
+                          })}
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+                    <Col md={4}>
+                      <Form.Group>
+                        <Form.Label>Search Students</Form.Label>
+                        <Form.Control
+                          value={marksSearch}
+                          onChange={(e) => setMarksSearch(e.target.value)}
+                          placeholder="Name or admission no..."
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col md={3}>
+                      <Button
+                        variant="primary"
+                        className="w-100"
+                        onClick={handleSaveSubjectMarks}
+                        disabled={savingSubjectMarks || !selectedSubjectForEntry}
+                      >
+                        {savingSubjectMarks ? 'Saving...' : 'Save Subject Marks'}
+                      </Button>
+                    </Col>
+                  </Row>
+
+                  <div className="marks-grid-table">
+                    <Table hover className="mb-0">
+                      <thead>
+                        <tr>
+                          <th>Admission</th>
+                          <th>Student</th>
+                          <th>Veda / Shakha</th>
+                          <th style={{ width: '150px' }}>Marks</th>
+                          <th style={{ width: '130px' }}>Present</th>
+                          <th>Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredEligibleStudents.map(student => (
+                          <tr key={student._id}>
+                            <td><strong>{student.admissionNo}</strong></td>
+                            <td>
+                              <strong>{student.fullName}</strong>
+                              {student.currentStandard && <small className="d-block text-muted">{student.currentStandard}</small>}
+                            </td>
+                            <td>
+                              <Badge bg="primary" className="me-1">{student.department?.name || 'N/A'}</Badge>
+                              {student.subDepartments?.slice(0, 1).map(sd => (
+                                <Badge key={sd._id} bg="secondary">{sd.name}</Badge>
+                              ))}
+                            </td>
+                            <td>
+                              <Form.Control
+                                type="number"
+                                min="0"
+                                max={selectedSubjectMaxMarks}
+                                value={subjectMarksGrid[student._id]?.marksObtained ?? ''}
+                                onChange={(e) => handleSubjectGridChange(student._id, 'marksObtained', e.target.value)}
+                                placeholder={`/${selectedSubjectMaxMarks}`}
+                              />
+                            </td>
+                            <td>
+                              <Form.Check
+                                type="switch"
+                                label={subjectMarksGrid[student._id]?.isPresent === false ? 'Absent' : 'Present'}
+                                checked={subjectMarksGrid[student._id]?.isPresent !== false}
+                                onChange={(e) => handleSubjectGridChange(student._id, 'isPresent', e.target.checked)}
+                                className="presence-switch"
+                              />
+                            </td>
+                            <td>
+                              <Form.Control
+                                value={subjectMarksGrid[student._id]?.remarks || ''}
+                                onChange={(e) => handleSubjectGridChange(student._id, 'remarks', e.target.value)}
+                                placeholder="Optional"
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Tab>
+
+            <Tab eventKey="students" title={`Students (${eligibleStudents.length})`}>
               <div className="table-responsive">
                 <Table striped hover size="sm">
                   <thead>
@@ -1893,14 +3090,14 @@ const ExamManagement = () => {
                           </td>
                           <td>
                             <Badge bg={hasMarks ? 'success' : 'warning'} className="me-2">
-                              {hasMarks ? '✅ Entered' : '⏳ Pending'}
+                              {hasMarks ? 'Entered' : 'Pending'}
                             </Badge>
                             <Button
                               variant={hasMarks ? 'outline-primary' : 'primary'}
                               size="sm"
                               onClick={() => handleEnterMarks(student)}
                             >
-                              {hasMarks ? '✏️ Edit' : '📝 Enter'}
+                              {hasMarks ? 'Edit' : 'Enter'}
                             </Button>
                           </td>
                         </tr>
@@ -1910,7 +3107,7 @@ const ExamManagement = () => {
                 </Table>
               </div>
             </Tab>
-            <Tab eventKey="marks" title={`📊 Entered Marks (${examMarks.length})`}>
+            <Tab eventKey="marks" title={`Entered Marks (${examMarks.length})`}>
               <div className="table-responsive">
                 <Table striped hover size="sm">
                   <thead>
@@ -1975,10 +3172,10 @@ const ExamManagement = () => {
       </Modal>
 
       {/* Enter Marks Modal */}
-      <Modal show={showMarksEntryModal} onHide={() => setShowMarksEntryModal(false)} size="lg">
+      <Modal show={showMarksEntryModal} onHide={() => setShowMarksEntryModal(false)} size="lg" scrollable>
         <Modal.Header closeButton>
           <Modal.Title>
-            📝 Enter Marks - {selectedStudent?.fullName}
+            Enter Marks - {selectedStudent?.fullName}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
@@ -2000,6 +3197,7 @@ const ExamManagement = () => {
                   name="isPresent"
                   checked={marksFormData.isPresent}
                   onChange={handleMarksFormChange}
+                  className="presence-switch presence-switch-card"
                 />
               </Form.Group>
 
@@ -2079,9 +3277,9 @@ const ExamManagement = () => {
                                   {' '}
                                   ({((subjectMark.marksObtained || 0) / (examSubject.maxMarks || 100) * 100).toFixed(1)}%)
                                   {subjectMark.marksObtained >= (examSubject.passingMarks || 40) ? (
-                                    <Badge bg="success" className="ms-2">✅ Pass</Badge>
+                                    <Badge bg="success" className="ms-2">Pass</Badge>
                                   ) : (
-                                    <Badge bg="danger" className="ms-2">❌ Fail</Badge>
+                                    <Badge bg="danger" className="ms-2">Fail</Badge>
                                   )}
                                 </Alert>
                               </Col>
@@ -2107,9 +3305,9 @@ const ExamManagement = () => {
                               <Col md={6}>
                                 <div className="mt-4">
                                   {subjectMark.marksObtained >= (examSubject.passingMarks || 40) ? (
-                                    <Badge bg="success">✅ Pass</Badge>
+                                    <Badge bg="success">Pass</Badge>
                                   ) : (
-                                    <Badge bg="danger">❌ Fail</Badge>
+                                    <Badge bg="danger">Fail</Badge>
                                   )}
                                   <br />
                                   <small>

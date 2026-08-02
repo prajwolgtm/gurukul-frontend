@@ -99,7 +99,7 @@ const ExamDetails = () => {
                   onClick={() => navigate(`/reports/exam/${exam?._id || id || exam?.id || exam?.examId}`)}
                   title="View exam results"
                 >
-                  📋 View Results
+                  View Results
                 </Button>
                 <Dropdown>
                   <Dropdown.Toggle variant="outline-primary" size="sm" id="pdf-dropdown">

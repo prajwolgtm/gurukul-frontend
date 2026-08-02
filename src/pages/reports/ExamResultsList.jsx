@@ -239,7 +239,7 @@ const ExamResultsList = () => {
             <Dropdown.Toggle size="sm" variant="outline-primary">📄 Download PDF</Dropdown.Toggle>
             <Dropdown.Menu>
               <Dropdown.Item onClick={downloadCompleteExamReport}>
-                📋 Complete Exam Report (All Students & Subjects)
+                Complete Exam Report (All Students & Subjects)
               </Dropdown.Item>
               <Dropdown.Divider />
               {subjectOptions.map(s => (

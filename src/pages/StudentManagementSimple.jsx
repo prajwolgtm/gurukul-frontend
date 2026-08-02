@@ -400,7 +400,7 @@ const StudentManagementSimple = () => {
                 onClick={loadInitialData}
                 disabled={loading}
               >
-                {loading ? '🔄 Loading...' : '🔄 Refresh'}
+                {loading ? 'Loading...' : 'Refresh'}
               </Button>
             </Card.Header>
             <Card.Body>
@@ -427,7 +427,7 @@ const StudentManagementSimple = () => {
                   </Form.Select>
                   {students.length === 0 && !loading && (
                     <Form.Text className="text-muted">
-                      📝 Create a student using the form on the left first, then refresh this page to assign them.
+                      Create a student using the form on the left first, then refresh this page to assign them.
                     </Form.Text>
                   )}
                 </Form.Group>

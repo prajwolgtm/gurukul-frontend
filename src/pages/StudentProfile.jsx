@@ -256,6 +256,24 @@ const StudentProfile = () => {
 
   const canEditWallet = user?.role === 'Admin' || user?.role === 'Coordinator' || user?.role === 'Principal';
 
+  const hasValue = (value) => value !== undefined && value !== null && String(value).trim() !== '' && String(value).trim() !== '—';
+  const displayValue = (value) => hasValue(value) ? value : '—';
+
+  const InfoItem = ({ label, value, children }) => (
+    <div className="profile-info-item">
+      <span>{label}</span>
+      <strong>{children || displayValue(value)}</strong>
+    </div>
+  );
+
+  const StatCard = ({ label, value, detail, tone = 'blue' }) => (
+    <div className={`profile-stat-card profile-stat-${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      {detail && <small>{detail}</small>}
+    </div>
+  );
+
   const handleWalletChange = (e) => {
     const { name, value } = e.target;
     setWalletForm(prev => ({ ...prev, [name]: value }));
@@ -350,101 +368,173 @@ const StudentProfile = () => {
   if (!profile) return null;
 
   return (
-    <div className="py-3">
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <Button variant="link" onClick={() => navigate(-1)} className="px-0">
-          ← Back
+    <div className="student-profile-page py-3 py-md-4">
+      <div className="student-profile-topbar">
+        <Button variant="outline-secondary" onClick={() => navigate(-1)}>
+          Back
         </Button>
-        <div className="text-muted small">
-          Viewing as {user?.fullName} ({user?.role})
+        <div>
+          <span>Viewing as</span>
+          <strong>{user?.fullName || 'User'} ({user?.role})</strong>
         </div>
       </div>
 
+      <section className="student-profile-hero">
+        <div className="student-avatar">
+          {profile.student.fullName?.split(' ').map(part => part[0]).join('').slice(0, 2) || 'S'}
+        </div>
+        <div className="student-hero-main">
+          <div className="student-hero-title-row">
+            <div>
+              <span className="student-profile-kicker">Student Profile</span>
+              <h2>{profile.student.fullName}</h2>
+            </div>
+            <Badge className={`profile-status-pill status-${profile.student.status || 'unknown'}`}>
+              {profile.student.status || 'unknown'}
+            </Badge>
+          </div>
+          <div className="student-hero-meta">
+            <span>Admission {profile.student.admissionNo || '—'}</span>
+            <span>{profile.student.academic?.department?.name || 'No Veda assigned'}</span>
+            <span>{profile.student.academic?.currentStandard || profile.student.academic?.admittedToStandard || 'No standard'}</span>
+            <span>Joined {formatDate(profile.student.academic?.dateOfAdmission)}</span>
+          </div>
+        </div>
+      </section>
+
+      <div className="profile-stat-grid">
+        <StatCard
+          label="Attendance"
+          value={`${profile.attendance.attendancePercentage || 0}%`}
+          detail={`${profile.attendance.presentSessions || 0}/${profile.attendance.totalSessions || 0} sessions`}
+          tone="green"
+        />
+        <StatCard
+          label="Class Attendance"
+          value={`${profile.classAttendance?.statistics?.attendancePercentage || 0}%`}
+          detail={`${profile.classAttendance?.statistics?.present || 0}/${profile.classAttendance?.statistics?.totalClasses || 0} classes`}
+          tone="blue"
+        />
+        <StatCard
+          label="Wallet Balance"
+          value={`${profile.wallet?.currentBalance ?? 0}`}
+          detail={profile.wallet?.currency || 'INR'}
+          tone="amber"
+        />
+        <StatCard
+          label="Exam Average"
+          value={`${Math.round(profile.exams?.averagePercentage || 0)}%`}
+          detail={`${profile.exams?.totalExams || 0} exams`}
+          tone="violet"
+        />
+      </div>
+
       <Row className="g-3">
-        <Col md={8}>
-          <Card>
-            <Card.Body className="pb-2">
-              <div className="d-flex justify-content-between flex-wrap gap-2">
+        <Col xl={8} lg={7}>
+          <Card className="profile-section-card profile-main-card">
+            <Card.Body>
+              <div className="profile-section-heading">
                 <div>
-                  <h3 className="mb-0">
-                    {profile.student.fullName}{' '}
-                    <Badge bg="secondary">{profile.student.admissionNo}</Badge>
-                  </h3>
-                  <div className="text-muted small">
-                    Age {profile.student.age || '—'} • {profile.student.gender} • Blood Group {profile.student.bloodGroup || '—'}
+                  <span>Complete Record</span>
+                  <h5>Student Details</h5>
+                </div>
+                <Badge bg="light">{profile.student.gender || '—'} · Blood {profile.student.bloodGroup || '—'}</Badge>
+              </div>
+
+              <div className="profile-detail-grid">
+                <div className="profile-info-panel">
+                  <h6>Academic Placement</h6>
+                  <div className="profile-info-grid">
+                    <InfoItem label="Veda" value={profile.student.academic?.department?.name} />
+                    <InfoItem label="Current Standard" value={profile.student.academic?.currentStandard} />
+                    <InfoItem label="Admitted To" value={profile.student.academic?.admittedToStandard} />
+                    <InfoItem label="Date of Admission" value={formatDate(profile.student.academic?.dateOfAdmission)} />
+                    <InfoItem label="Shakha">
+                      <div className="profile-chip-list">
+                        {profile.student.academic?.subDepartments?.length
+                          ? profile.student.academic.subDepartments.map(sd => (
+                            <span className="profile-chip" key={sd._id || sd.name}>{sd.name}</span>
+                          ))
+                          : '—'}
+                      </div>
+                    </InfoItem>
+                    <InfoItem label="Batches">
+                      <div className="profile-chip-list">
+                        {profile.student.academic?.batches?.length
+                          ? profile.student.academic.batches.map(batch => (
+                            <span className="profile-chip" key={batch._id || batch.name}>{batch.name}</span>
+                          ))
+                          : '—'}
+                      </div>
+                    </InfoItem>
                   </div>
                 </div>
-                <div className="text-md-end">
-                  <Badge bg={
-                    profile.student.status === 'active' ? 'success' :
-                    profile.student.status === 'graduated' ? 'primary' :
-                    profile.student.status === 'leftout' ? 'warning' :
-                    'secondary'
-                  }>
-                    {profile.student.status}
-                  </Badge>
-                  <div className="text-muted small mt-1">
-                    Joined {formatDate(profile.student.academic?.dateOfAdmission)}
+
+                <div className="profile-info-panel">
+                  <h6>Family & Contact</h6>
+                  <div className="profile-info-grid">
+                    <InfoItem label="Father" value={profile.student.family?.fatherName} />
+                    <InfoItem label="Mother" value={profile.student.family?.motherName} />
+                    <InfoItem label="Occupation" value={profile.student.family?.occupation} />
+                    <InfoItem label="Phone" value={profile.student.contact?.phone} />
+                    <InfoItem label="Guardian Phone" value={profile.student.contact?.guardianPhone} />
+                    <InfoItem label="Guardian Email" value={profile.student.contact?.guardianEmail} />
+                  </div>
+                </div>
+
+                <div className="profile-info-panel">
+                  <h6>Vedic & Personal</h6>
+                  <div className="profile-info-grid">
+                    <InfoItem label="Shaakha" value={profile.student.vedic?.shaakha} />
+                    <InfoItem label="Gothra" value={profile.student.vedic?.gothra} />
+                    <InfoItem label="Nationality" value={profile.student.demographics?.nationality} />
+                    <InfoItem label="Religion" value={profile.student.demographics?.religion} />
+                    <InfoItem label="Caste" value={profile.student.demographics?.caste} />
+                    <InfoItem label="Mother Tongue" value={profile.student.demographics?.motherTongue} />
+                  </div>
+                </div>
+
+                <div className="profile-info-panel">
+                  <h6>Address & Previous School</h6>
+                  <div className="profile-info-grid">
+                    <InfoItem label="Present Address" value={profile.student.contact?.presentAddress || profile.student.contact?.address} />
+                    <InfoItem label="Permanent Address" value={profile.student.contact?.permanentAddress} />
+                    <InfoItem label="Last School" value={profile.student.academic?.lastSchoolAttended} />
+                    <InfoItem label="Last Standard" value={profile.student.academic?.lastStandardStudied} />
+                    <InfoItem label="TC Details" value={profile.student.academic?.tcDetails} />
                   </div>
                 </div>
               </div>
 
-              <Row className="mt-3 mb-0">
-                <Col md={6}>
-                  <h6 className="mb-2">Academic Placement</h6>
-                  <ListGroup variant="flush" className="small">
-                    <ListGroup.Item className="px-0 py-1">
-                      Department: <strong>{profile.student.academic?.department?.name || '—'}</strong>
-                    </ListGroup.Item>
-                    <ListGroup.Item className="px-0 py-1">
-                      Sub-Departments:{' '}
-                      {profile.student.academic?.subDepartments?.length
-                        ? profile.student.academic.subDepartments.map(sd => sd.name).join(', ')
-                        : '—'}
-                    </ListGroup.Item>
-                    <ListGroup.Item className="px-0 py-1">
-                      Batches:{' '}
-                      {profile.student.academic?.batches?.length
-                        ? profile.student.academic.batches.map(batch => batch.name).join(', ')
-                        : '—'}
-                    </ListGroup.Item>
-                  </ListGroup>
-                </Col>
-                <Col md={6}>
-                  <h6 className="mb-2">Contact</h6>
-                  <ListGroup variant="flush" className="small">
-                    <ListGroup.Item className="px-0 py-1">
-                      Phone: <strong>{profile.student.contact?.phone || '—'}</strong>
-                    </ListGroup.Item>
-                    <ListGroup.Item className="px-0 py-1">
-                      Guardian: <strong>{profile.student.contact?.guardianPhone || '—'}</strong>
-                    </ListGroup.Item>
-                    <ListGroup.Item className="px-0 py-1">
-                      Address: <strong>{profile.student.contact?.address || '—'}</strong>
-                    </ListGroup.Item>
-                  </ListGroup>
-                </Col>
-              </Row>
+              <div className="profile-section-divider" />
 
-              <hr className="my-3" />
-
-              <div>
-                <h5 className="mb-3">Student Account / Wallet</h5>
+              <div className="profile-subsection">
+                <div className="profile-section-heading compact">
+                  <div>
+                    <span>Finance</span>
+                    <h5>Student Account / Wallet</h5>
+                  </div>
+                </div>
                 {profile.wallet ? (
                   <>
-                    <div className="mb-2">
-                      <div className="fw-bold">
+                    <div className="profile-wallet-summary">
+                      <div>
+                        <span>Current Balance</span>
+                        <strong>
                         {profile.wallet.currentBalance ?? 0} {profile.wallet.currency || 'INR'}
+                        </strong>
                       </div>
-                      <div className="text-muted small">
-                        Current Balance (Office-held + Puja collections etc.)
+                      <div>
+                        <span>Total Credit</span>
+                        <strong>{profile.wallet.totalCredit ?? 0}</strong>
                       </div>
-                    </div>
-                    <div className="text-muted small mb-2">
-                      Total Credit: {profile.wallet.totalCredit ?? 0} • Total Debit: {profile.wallet.totalDebit ?? 0}
+                      <div>
+                        <span>Total Debit</span>
+                        <strong>{profile.wallet.totalDebit ?? 0}</strong>
+                      </div>
                     </div>
                     {Array.isArray(profile.wallet.recentTransactions) && profile.wallet.recentTransactions.length > 0 && (
-                      <div className="table-responsive small">
+                      <div className="table-responsive small profile-table-wrap">
                         <Table size="sm" className="mb-2">
                           <thead>
                             <tr>
@@ -475,7 +565,7 @@ const StudentProfile = () => {
                                       size="sm"
                                       onClick={() => handleOpenEditTx(tx)}
                                     >
-                                      ✏️
+                                      Edit
                                     </Button>
                                   </td>
                                 )}
@@ -493,23 +583,26 @@ const StudentProfile = () => {
                 )}
               </div>
 
-              <hr className="my-3" />
+              <div className="profile-section-divider" />
 
-              <div>
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h5>🩺 Health Records</h5>
+              <div className="profile-subsection">
+                <div className="profile-section-heading compact">
+                  <div>
+                    <span>Wellness</span>
+                    <h5>Health Records</h5>
+                  </div>
                   {canEditWallet && (
                     <Button
                       variant="primary"
                       size="sm"
                       onClick={() => setShowHealthModal(true)}
                     >
-                      + Add Record
+                      Add Record
                     </Button>
                   )}
                 </div>
                 {profile?.student?.latestHealth && (
-                  <div className="mb-3 p-3 bg-light rounded">
+                  <div className="profile-health-summary">
                     <h6 className="small mb-2">Latest Health Summary</h6>
                     <div className="row small">
                       <div className="col-6">
@@ -566,7 +659,7 @@ const StudentProfile = () => {
                             <td>{record.heightCm ? `${record.heightCm} cm` : '-'}</td>
                             <td>{record.weightKg ? `${record.weightKg} kg` : '-'}</td>
                             <td>
-                              {record.hospitalName && <div><small>🏥 {record.hospitalName}</small></div>}
+                              {record.hospitalName && <div><small>{record.hospitalName}</small></div>}
                               {record.reason && <div><small>Reason: {record.reason}</small></div>}
                               {record.diagnosis && <div><small>Diagnosis: {record.diagnosis}</small></div>}
                               {record.condition && <div><small>Condition: {record.condition}</small></div>}
@@ -594,19 +687,24 @@ const StudentProfile = () => {
           </Card>
         </Col>
 
-        <Col md={4}>
-          <Card className="mb-3">
+        <Col xl={4} lg={5}>
+          <Card className="profile-section-card profile-side-card mb-3">
             <Card.Body>
-              <h5>Attendance Snapshot</h5>
+              <div className="profile-section-heading compact">
+                <div>
+                  <span>Regular Attendance</span>
+                  <h5>Attendance Snapshot</h5>
+                </div>
+              </div>
               <ProgressBar
                 now={profile.attendance.attendancePercentage}
                 label={`${profile.attendance.attendancePercentage}%`}
-                className="mb-2"
+                className="profile-progress mb-2"
               />
               <div className="text-muted small mb-3">
                 {profile.attendance.presentSessions} / {profile.attendance.totalSessions} sessions present
               </div>
-              <div className="d-flex justify-content-between">
+              <div className="profile-mini-metrics">
                 <div>
                   <div className="fw-bold">{profile.attendance.presentSessions}</div>
                   <div className="text-muted small">Present</div>
@@ -629,18 +727,23 @@ const StudentProfile = () => {
           </Card>
           
           {profile.classAttendance && (
-            <Card className="mb-3">
-              <Card.Body>
-                <h5>Class Attendance</h5>
-                <ProgressBar
-                  now={profile.classAttendance.statistics.attendancePercentage}
-                  label={`${profile.classAttendance.statistics.attendancePercentage}%`}
-                  className="mb-2"
-                />
+	            <Card className="profile-section-card profile-side-card mb-3">
+	              <Card.Body>
+	                <div className="profile-section-heading compact">
+	                  <div>
+	                    <span>Subject Classes</span>
+	                    <h5>Class Attendance</h5>
+	                  </div>
+	                </div>
+	                <ProgressBar
+	                  now={profile.classAttendance.statistics.attendancePercentage}
+	                  label={`${profile.classAttendance.statistics.attendancePercentage}%`}
+	                  className="profile-progress mb-2"
+	                />
                 <div className="text-muted small mb-3">
                   {profile.classAttendance.statistics.present} / {profile.classAttendance.statistics.totalClasses} classes present
                 </div>
-                <div className="d-flex justify-content-between mb-3">
+	                <div className="profile-mini-metrics mb-3">
                   <div>
                     <div className="fw-bold">{profile.classAttendance.statistics.present}</div>
                     <div className="text-muted small">Present</div>
@@ -706,9 +809,10 @@ const StudentProfile = () => {
 
       <Row className="g-3 mt-1">
         <Col md={7}>
-          <Card className="h-100">
-            <Card.Header>
-              <strong>Recent Attendance (last {attendanceRecent.length} days)</strong>
+          <Card className="profile-section-card h-100">
+            <Card.Header className="profile-card-header">
+              <strong>Recent Attendance</strong>
+              <span>Last {attendanceRecent.length} days</span>
             </Card.Header>
             <Card.Body className="p-0">
               {attendanceRecent.length === 0 ? (
@@ -744,9 +848,10 @@ const StudentProfile = () => {
         </Col>
 
         <Col md={5}>
-          <Card className="h-100">
-            <Card.Header>
+          <Card className="profile-section-card h-100">
+            <Card.Header className="profile-card-header">
               <strong>Exam Performance</strong>
+              <span>{examsRecent.length} recent records</span>
             </Card.Header>
             <Card.Body className="p-0">
               {examsRecent.length === 0 ? (
@@ -793,9 +898,10 @@ const StudentProfile = () => {
 
       <Row className="g-3 mt-1">
         <Col md={6}>
-          <Card>
-            <Card.Header>
+          <Card className="profile-section-card">
+            <Card.Header className="profile-card-header">
               <strong>Leave Requests History</strong>
+              <span>{leaveRequests.length} records</span>
             </Card.Header>
             <Card.Body className="p-0">
               {requestsLoading ? (
@@ -844,9 +950,10 @@ const StudentProfile = () => {
         </Col>
 
         <Col md={6}>
-          <Card>
-            <Card.Header>
+          <Card className="profile-section-card">
+            <Card.Header className="profile-card-header">
               <strong>Visit Requests History</strong>
+              <span>{visitRequests.length} records</span>
             </Card.Header>
             <Card.Body className="p-0">
               {requestsLoading ? (
@@ -951,8 +1058,8 @@ const StudentProfile = () => {
 
       <Row className="g-3 mt-1">
         <Col md={8}>
-          <Card>
-            <Card.Header>
+          <Card className="profile-section-card">
+            <Card.Header className="profile-card-header">
               <div className="d-flex justify-content-between align-items-center">
                 <strong>Updates & Notes</strong>
                 <small className="text-muted">
@@ -997,8 +1104,8 @@ const StudentProfile = () => {
         </Col>
 
         <Col md={4}>
-          <Card className="mb-3">
-            <Card.Header>
+          <Card className="profile-section-card mb-3">
+            <Card.Header className="profile-card-header">
               <strong>Add Note / Update</strong>
             </Card.Header>
             <Card.Body>
@@ -1072,8 +1179,8 @@ const StudentProfile = () => {
               )}
             </Card.Body>
           </Card>
-          <Card>
-            <Card.Header>
+          <Card className="profile-section-card">
+            <Card.Header className="profile-card-header">
               <strong>Wallet Transaction (Credit / Debit)</strong>
             </Card.Header>
             <Card.Body>
@@ -1152,7 +1259,7 @@ const StudentProfile = () => {
       {/* Health Record Modal */}
       <Modal show={showHealthModal} onHide={() => setShowHealthModal(false)} size="lg">
         <Modal.Header closeButton>
-          <Modal.Title>🩺 Add Health Record</Modal.Title>
+          <Modal.Title>Add Health Record</Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleHealthSubmit}>
           <Modal.Body>
@@ -1306,4 +1413,3 @@ const StudentProfile = () => {
 };
 
 export default StudentProfile;
-

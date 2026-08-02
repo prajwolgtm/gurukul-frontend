@@ -1,16 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { useAuth } from '../store/auth';
 import api from '../api/client';
 
 const SecurityQRScanner = () => {
-  const { user } = useAuth();
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [manualCode, setManualCode] = useState('');
   const [showManual, setShowManual] = useState(false);
+  const [insideVisitors, setInsideVisitors] = useState([]);
+  const [insideLoading, setInsideLoading] = useState(false);
   const scannerRef = useRef(null);
   const html5QrCodeRef = useRef(null);
 
@@ -22,6 +22,22 @@ const SecurityQRScanner = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    loadInsideVisitors();
+  }, []);
+
+  const loadInsideVisitors = async () => {
+    setInsideLoading(true);
+    try {
+      const response = await api.get('/requests/gate/inside-visitors');
+      setInsideVisitors(response.data?.data || []);
+    } catch (err) {
+      console.error('Error loading inside visitors:', err);
+    } finally {
+      setInsideLoading(false);
+    }
+  };
 
   const startScanning = async () => {
     try {
@@ -152,7 +168,14 @@ const SecurityQRScanner = () => {
       });
       
       if (response.data.success) {
-        setResult(response.data);
+        const nextResult = {
+          ...response.data,
+          request: response.data.request
+            ? { ...response.data.request, qrData }
+            : response.data.request
+        };
+        setResult(nextResult);
+        loadInsideVisitors();
         stopScanning();
       } else {
         setError(response.data.message || 'Verification failed');
@@ -228,6 +251,19 @@ const SecurityQRScanner = () => {
     }
   };
 
+  const handleCheckoutVisitor = async (visitId) => {
+    setLoading(true);
+    setError('');
+    try {
+      await api.put(`/requests/gate/visit/${visitId}/checkout`);
+      await loadInsideVisitors();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not check out visitor');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const reset = () => {
     setResult(null);
     setError('');
@@ -262,6 +298,56 @@ const SecurityQRScanner = () => {
           </div>
         )}
 
+        <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-slate-800">Currently Inside</h2>
+              <p className="text-sm text-slate-500">Visitors checked in through the gate and not checked out yet.</p>
+            </div>
+            <button
+              onClick={loadInsideVisitors}
+              className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-semibold hover:bg-slate-200"
+            >
+              Refresh
+            </button>
+          </div>
+
+          {insideLoading ? (
+            <p className="text-slate-500">Loading visitors...</p>
+          ) : insideVisitors.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-slate-500">
+              No visitors are currently inside.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {insideVisitors.map(visitor => (
+                <div key={visitor.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-slate-800">{visitor.parent?.name || 'Visitor'}</p>
+                      <p className="text-sm text-slate-600">
+                        {visitor.requestId}
+                        {visitor.student?.name ? ` · ${visitor.student.name} (${visitor.student.admissionNo})` : ''}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Entry: {visitor.entryTime ? new Date(visitor.entryTime).toLocaleString() : 'N/A'}
+                        {visitor.approvedVenue ? ` · Venue: ${visitor.approvedVenue}` : ''}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleCheckoutVisitor(visitor.id)}
+                      disabled={loading}
+                      className="px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 disabled:opacity-50"
+                    >
+                      Check Out
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {!result && !scanning && (
           <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
             <div className="flex flex-col sm:flex-row gap-4">
@@ -269,14 +355,12 @@ const SecurityQRScanner = () => {
                 onClick={startScanning}
                 className="flex-1 px-6 py-4 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors flex items-center justify-center gap-2"
               >
-                <span>📷</span>
                 <span>Start Camera Scanner</span>
               </button>
               <button
                 onClick={() => setShowManual(!showManual)}
                 className="flex-1 px-6 py-4 bg-slate-600 text-white rounded-xl font-semibold hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
               >
-                <span>⌨️</span>
                 <span>Manual Entry</span>
               </button>
             </div>

@@ -25,9 +25,9 @@ export const setToken = (token) => {
 
 export const getToken = () => localStorage.getItem('authToken');
 
-export const loginParent = async (email, dob) => {
+export const loginParent = async (contact, dob) => {
   try {
-    const { data } = await api.post('/auth/login-parent', { email, dob });
+    const { data } = await api.post('/auth/login-parent', { contact, dob });
     return data;
   } catch (error) {
     throw error;

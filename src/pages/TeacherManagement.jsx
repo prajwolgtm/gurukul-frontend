@@ -429,7 +429,7 @@ const TeacherManagement = () => {
           {/* Header */}
           <div className="d-flex justify-content-between align-items-center mb-4">
             <div>
-              <h2>👨‍🏫 Teacher Management</h2>
+              <h2>Teacher Management</h2>
               <p className="text-muted mb-0">Manage teacher accounts and assignments</p>
             </div>
             {canManage && (
@@ -438,7 +438,7 @@ const TeacherManagement = () => {
                 onClick={() => { resetForm(); setShowModal(true); }}
                 disabled={loading}
               >
-                ➕ Add Teacher
+                Add Teacher
               </Button>
             )}
           </div>
@@ -456,13 +456,13 @@ const TeacherManagement = () => {
           )}
 
           {/* Filters */}
-          <Card className="mb-4">
-            <Card.Header>
-              <h6 className="mb-0">🔍 Filters & Search</h6>
+          <Card className="filter-panel mb-4">
+            <Card.Header className="filter-panel-header">
+              <h6 className="mb-0">Filters & Search</h6>
             </Card.Header>
             <Card.Body>
-              <Row>
-                <Col md={3}>
+              <Row className="filter-grid g-3 align-items-end">
+                <Col xs={12} md={6} xl={3}>
                   <Form.Group>
                     <Form.Label>Search</Form.Label>
                     <Form.Control
@@ -474,7 +474,7 @@ const TeacherManagement = () => {
                     />
                   </Form.Group>
                 </Col>
-                <Col md={2}>
+                <Col xs={12} sm={6} xl={2}>
                   <Form.Group>
                     <Form.Label>Department</Form.Label>
                     <Form.Select
@@ -491,7 +491,7 @@ const TeacherManagement = () => {
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={2}>
+                <Col xs={12} sm={6} xl={2}>
                   <Form.Group>
                     <Form.Label>Status</Form.Label>
                     <Form.Select
@@ -507,7 +507,7 @@ const TeacherManagement = () => {
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={2}>
+                <Col xs={12} sm={6} xl={2}>
                   <Form.Group>
                     <Form.Label>Verification</Form.Label>
                     <Form.Select
@@ -521,16 +521,15 @@ const TeacherManagement = () => {
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={2}>
+                <Col xs={12} sm={6} xl={2}>
                   <Form.Group>
-                    <Form.Label>&nbsp;</Form.Label>
                     <Button
                       variant="outline-secondary"
-                      className="d-block"
+                      className="filter-action-btn w-100"
                       onClick={loadTeachers}
                       disabled={loading}
                     >
-                      🔄
+                      Refresh
                     </Button>
                   </Form.Group>
                 </Col>
@@ -541,7 +540,7 @@ const TeacherManagement = () => {
           {/* Teachers Table */}
           <Card>
             <Card.Header className="d-flex justify-content-between align-items-center">
-              <h6 className="mb-0">📋 Teachers List</h6>
+              <h6 className="mb-0">Teachers List</h6>
               <Badge bg="info">
                 {pagination.totalTeachers || 0} Total Teachers
               </Badge>
@@ -582,8 +581,8 @@ const TeacherManagement = () => {
                               <strong>{teacher.user?.fullName}</strong>
                               <br />
                               <small className="text-muted">
-                                📧 {teacher.user?.email}
-                                {teacher.user?.phone && ` | 📞 ${teacher.user?.phone}`}
+                                {teacher.user?.email}
+                                {teacher.user?.phone && ` | ${teacher.user?.phone}`}
                               </small>
                             </div>
                           </td>
@@ -631,7 +630,7 @@ const TeacherManagement = () => {
                           </td>
                           <td>
                             <Badge bg={teacher.isVerified ? 'success' : 'warning'}>
-                              {teacher.isVerified ? '✅ Verified' : '⏳ Pending'}
+                              {teacher.isVerified ? 'Verified' : 'Pending'}
                             </Badge>
                             {teacher.verifiedBy && (
                               <small className="d-block text-muted">
@@ -660,7 +659,7 @@ const TeacherManagement = () => {
                                   onClick={() => handleEdit(teacher)}
                                   title="Edit teacher"
                                 >
-                                  ✏️
+                                  Edit
                                 </Button>
                                 <Button
                                   variant="outline-info"
@@ -668,7 +667,7 @@ const TeacherManagement = () => {
                                   onClick={() => handleAssign(teacher)}
                                   title="Manage assignments"
                                 >
-                                  📋
+                                  Assign
                                 </Button>
                                 {!teacher.isVerified && canVerify && (
                                   <Button
@@ -677,7 +676,7 @@ const TeacherManagement = () => {
                                     onClick={() => handleVerify(teacher._id)}
                                     title="Verify teacher"
                                   >
-                                    ✅
+                                    Verify
                                   </Button>
                                 )}
                                 <Button
@@ -686,7 +685,7 @@ const TeacherManagement = () => {
                                   onClick={() => handleDelete(teacher._id)}
                                   title="Delete teacher"
                                 >
-                                  🗑️
+                                  Delete
                                 </Button>
                               </div>
                             </td>
@@ -753,17 +752,17 @@ const TeacherManagement = () => {
       </Row>
 
       {/* Add/Edit Teacher Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="xl">
+      <Modal show={showModal} onHide={() => setShowModal(false)} size="xl" scrollable>
         <Modal.Header closeButton>
           <Modal.Title>
-            {editingTeacher ? '✏️ Edit Teacher' : '➕ Add New Teacher'}
+            {editingTeacher ? 'Edit Teacher' : 'Add New Teacher'}
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubmit}>
           <Modal.Body>
             <Tabs defaultActiveKey="basic" className="mb-3">
               {/* Basic Information Tab */}
-              <Tab eventKey="basic" title="📝 Basic Info">
+              <Tab eventKey="basic" title="Basic Info">
                 <Row>
                   <Col md={6}>
                     <Form.Group className="mb-3">
@@ -925,7 +924,7 @@ const TeacherManagement = () => {
               </Tab>
 
               {/* Professional Information Tab */}
-              <Tab eventKey="professional" title="🎓 Academic Info">
+              <Tab eventKey="professional" title="Academic Info">
                 <Row>
                   <Col md={6}>
                     <Form.Group className="mb-3">
@@ -1230,10 +1229,10 @@ const TeacherManagement = () => {
       </Modal>
 
       {/* Teacher Assignment Modal */}
-      <Modal show={showAssignmentModal} onHide={() => setShowAssignmentModal(false)} size="lg">
+      <Modal show={showAssignmentModal} onHide={() => setShowAssignmentModal(false)} size="lg" scrollable>
         <Modal.Header closeButton>
           <Modal.Title>
-            📋 Manage Assignments - {assigningTeacher?.user?.fullName}
+            Manage Assignments - {assigningTeacher?.user?.fullName}
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleAssignmentSubmit}>

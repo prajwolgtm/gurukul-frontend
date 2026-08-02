@@ -290,7 +290,7 @@ const DailyAttendance = () => {
       {/* Date Selection Card */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-4">
-          <h3 className="text-white font-semibold text-lg">📅 Select Attendance Date</h3>
+          <h3 className="text-white font-semibold text-lg">Select Attendance Date</h3>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -309,13 +309,13 @@ const DailyAttendance = () => {
               {attendanceData ? (
                 <>
                   <div className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-xl font-semibold">
-                      👥 {attendanceData.totalStudents || students.length} Students
+                      {attendanceData.totalStudents || students.length} Students
                   </div>
                   <div className="px-4 py-2 bg-sky-100 text-sky-700 rounded-xl font-semibold">
-                      📋 {sessions.length} Sessions
+                      {sessions.length} Sessions
                   </div>
                   <div className="px-4 py-2 bg-violet-100 text-violet-700 rounded-xl font-semibold">
-                      📅 {new Date(selectedDate).toLocaleDateString('en-US', { 
+                      {new Date(selectedDate).toLocaleDateString('en-US', { 
                         weekday: 'long', 
                         year: 'numeric', 
                         month: 'long', 
@@ -325,7 +325,7 @@ const DailyAttendance = () => {
                 </>
               ) : (
                 <div className="w-full bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-4 rounded-xl">
-                  <p className="font-semibold mb-2">⚠️ No attendance data for this date.</p>
+                  <p className="font-semibold mb-2">No attendance data for this date.</p>
                   {canManageAttendance && (
                     <button
                         onClick={() => setShowInitializeModal(true)}
@@ -345,7 +345,7 @@ const DailyAttendance = () => {
       {sessions.length > 0 && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-4">
-            <h3 className="text-white font-semibold text-lg">📋 Select Session to Mark Attendance</h3>
+            <h3 className="text-white font-semibold text-lg">Select Session to Mark Attendance</h3>
             <p className="text-sky-100 text-sm mt-1">Choose a session and mark attendance for all students</p>
           </div>
           <div className="p-6">
@@ -374,7 +374,7 @@ const DailyAttendance = () => {
                     onClick={() => setShowSessionMarkingModal(true)}
                     className="mt-3 px-4 py-2 bg-sky-500 text-white rounded-lg font-semibold hover:bg-sky-600 transition-colors text-sm"
                   >
-                    📝 Mark Selected Session
+                    Mark Selected Session
                   </button>
                 )}
               </div>
@@ -513,7 +513,7 @@ const DailyAttendance = () => {
                               onClick={() => handleOpenStudentModal(student)}
                             className="px-4 py-2 bg-violet-600 text-white rounded-lg font-semibold hover:bg-violet-700 transition-colors text-sm"
                           >
-                            {canManageAttendance ? '✏️ Edit' : '👁️ View'}
+                            {canManageAttendance ? 'Edit' : 'View'}
                           </button>
                         </td>
                       </tr>
@@ -592,7 +592,7 @@ const DailyAttendance = () => {
                       onClick={() => handleOpenStudentModal(student)}
                       className="w-full px-4 py-3 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors"
                     >
-                      {canManageAttendance ? '✏️ Edit All Sessions' : '👁️ View All Sessions'}
+                      {canManageAttendance ? 'Edit All Sessions' : 'View All Sessions'}
                     </button>
                   </div>
                 );
@@ -676,7 +676,7 @@ const DailyAttendance = () => {
           <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-4 flex items-center justify-between">
               <h2 className="text-white font-bold text-lg">
-            📝 Mark/Update Attendance - {selectedStudent?.student?.fullName || 'Student'}
+            Mark/Update Attendance - {selectedStudent?.student?.fullName || 'Student'}
               </h2>
               <button onClick={() => setShowStudentModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 text-white">×</button>
             </div>
@@ -684,7 +684,7 @@ const DailyAttendance = () => {
               <div className="bg-slate-50 rounded-xl p-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                       <div>
-                    <span className="font-semibold text-slate-600">📅 Date:</span>{' '}
+                    <span className="font-semibold text-slate-600">Date:</span>{' '}
                     <span className="text-slate-800">{new Date(selectedDate).toLocaleDateString('en-US', { 
                           weekday: 'long', 
                           year: 'numeric', 
@@ -693,7 +693,7 @@ const DailyAttendance = () => {
                     })}</span>
                       </div>
                       <div>
-                    <span className="font-semibold text-slate-600">🎓 Admission No:</span>{' '}
+                    <span className="font-semibold text-slate-600">Admission No:</span>{' '}
                     <span className="px-2 py-1 bg-violet-100 text-violet-700 rounded-full text-xs font-semibold">
                       {selectedStudent.student?.admissionNo || 'N/A'}
                     </span>
@@ -702,7 +702,7 @@ const DailyAttendance = () => {
               </div>
 
               <div className="bg-sky-50 border-l-4 border-sky-500 text-sky-800 p-4 rounded-xl">
-                <p className="text-sm font-semibold">ℹ️ Instructions: Select status for each of the 14 daily sessions. You can add optional notes for any session.</p>
+                <p className="text-sm font-semibold">Instructions: Select status for each of the 14 daily sessions. You can add optional notes for any session.</p>
               </div>
 
               <div className="space-y-3">
@@ -731,10 +731,10 @@ const DailyAttendance = () => {
                             'border-sky-300 bg-sky-50 text-sky-700'
                           } disabled:opacity-50`}
                             >
-                              <option value="Present">✅ Present</option>
-                              <option value="Absent">❌ Absent</option>
-                              <option value="Sick">🤒 Sick</option>
-                              <option value="Leave">🏖️ Leave</option>
+                              <option value="Present">Present</option>
+                              <option value="Absent">Absent</option>
+                              <option value="Sick">Sick</option>
+                              <option value="Leave">Leave</option>
                         </select>
                       </div>
                             {currentStatus !== formData.status && (
@@ -757,19 +757,19 @@ const DailyAttendance = () => {
               <div className="bg-emerald-50 rounded-xl p-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                       <div>
-                    <span className="font-semibold text-slate-600">✅ Present:</span>{' '}
+                    <span className="font-semibold text-slate-600">Present:</span>{' '}
                     <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold">
                           {Object.values(studentAttendanceForm).filter(f => f.status === 'Present').length}
                     </span>
                       </div>
                       <div>
-                    <span className="font-semibold text-slate-600">❌ Absent:</span>{' '}
+                    <span className="font-semibold text-slate-600">Absent:</span>{' '}
                     <span className="px-2 py-1 bg-rose-100 text-rose-700 rounded-full text-xs font-semibold">
                           {Object.values(studentAttendanceForm).filter(f => f.status === 'Absent').length}
                     </span>
                       </div>
                       <div>
-                    <span className="font-semibold text-slate-600">📊 Total Sessions:</span>{' '}
+                    <span className="font-semibold text-slate-600">Total Sessions:</span>{' '}
                     <span className="px-2 py-1 bg-sky-100 text-sky-700 rounded-full text-xs font-semibold">
                       {sessions.length}
                     </span>
@@ -782,7 +782,7 @@ const DailyAttendance = () => {
                 onClick={() => setShowStudentModal(false)}
                 className="flex-1 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-300 transition-colors"
               >
-            ❌ Cancel
+            Cancel
               </button>
           {canManageAttendance && (
                 <button
@@ -796,7 +796,7 @@ const DailyAttendance = () => {
                   Saving...
                     </span>
               ) : (
-                '💾 Save Attendance'
+                'Save Attendance'
               )}
                 </button>
               )}
@@ -810,7 +810,7 @@ const DailyAttendance = () => {
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-white font-bold text-lg">📝 Mark Session Attendance</h2>
+              <h2 className="text-white font-bold text-lg">Mark Session Attendance</h2>
               <button onClick={() => setShowSessionMarkingModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 text-white">×</button>
             </div>
             <div className="p-6 space-y-4">
@@ -832,10 +832,10 @@ const DailyAttendance = () => {
                   onChange={(e) => setSessionMarkingData({...sessionMarkingData, status: e.target.value})}
                   className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base bg-white"
                 >
-                  <option value="Present">✅ Present</option>
-                  <option value="Absent">❌ Absent</option>
-                  <option value="Sick">🤒 Sick</option>
-                  <option value="Leave">🏖️ Leave</option>
+                  <option value="Present">Present</option>
+                  <option value="Absent">Absent</option>
+                  <option value="Sick">Sick</option>
+                  <option value="Leave">Leave</option>
                 </select>
               </div>
 
@@ -851,7 +851,7 @@ const DailyAttendance = () => {
               </div>
 
               <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-4 rounded-xl">
-                <p className="text-sm font-semibold">⚠️ Warning: This will mark <strong>{sessionMarkingData.status || 'Present'}</strong> for all <strong>{students.length} students</strong> in this session.</p>
+                <p className="text-sm font-semibold">Warning: This will mark <strong>{sessionMarkingData.status || 'Present'}</strong> for all <strong>{students.length} students</strong> in this session.</p>
               </div>
 
               <div className="overflow-x-auto">
@@ -936,7 +936,7 @@ const DailyAttendance = () => {
                 Marking...
                   </span>
             ) : (
-              `✅ Mark All Students as ${sessionMarkingData.status || 'Present'}`
+              `Mark All Students as ${sessionMarkingData.status || 'Present'}`
             )}
               </button>
             </div>
@@ -949,7 +949,7 @@ const DailyAttendance = () => {
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md">
             <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-800">📋 Bulk Mark Session</h2>
+              <h2 className="text-xl font-bold text-slate-800">Bulk Mark Session</h2>
               <button onClick={() => setShowBulkMarkModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500">×</button>
             </div>
             <div className="p-6 space-y-4">
@@ -976,10 +976,10 @@ const DailyAttendance = () => {
                 onChange={(e) => setBulkMarkData({...bulkMarkData, status: e.target.value})}
                   className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base bg-white"
               >
-                <option value="Present">✅ Present</option>
-                <option value="Absent">❌ Absent</option>
-                <option value="Sick">🤒 Sick</option>
-                <option value="Leave">🏖️ Leave</option>
+                <option value="Present">Present</option>
+                <option value="Absent">Absent</option>
+                <option value="Sick">Sick</option>
+                <option value="Leave">Leave</option>
                 </select>
               </div>
               
@@ -995,7 +995,7 @@ const DailyAttendance = () => {
               </div>
               
               <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-4 rounded-xl">
-                <p className="text-sm font-semibold">⚠️ Warning: This will mark <strong>{bulkMarkData.status}</strong> for ALL {students.length} students in the selected session.</p>
+                <p className="text-sm font-semibold">Warning: This will mark <strong>{bulkMarkData.status}</strong> for ALL {students.length} students in the selected session.</p>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 p-6 border-t border-slate-200">

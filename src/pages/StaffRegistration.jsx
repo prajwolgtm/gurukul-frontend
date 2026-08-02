@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ROLES } from '../utils/roles';
-import api from '../api/client';
+import { createStaffAccount } from '../api/account-management';
 
 const StaffRegistration = () => {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -34,7 +33,7 @@ const StaffRegistration = () => {
     setLoading(true);
 
     try {
-      const { data } = await api.post('/auth/register-staff', {
+      const data = await createStaffAccount({
         fullName: formData.fullName,
         email: formData.email,
         password: formData.password,
@@ -42,8 +41,14 @@ const StaffRegistration = () => {
       });
 
       if (data.success) {
-        setSuccess('Account created! Redirecting...');
-        setTimeout(() => navigate('/login'), 2000);
+        setSuccess(`${formData.role} account created successfully.`);
+        setFormData({
+          fullName: '',
+          email: '',
+          password: '',
+          confirmPassword: '',
+          role: ''
+        });
       } else {
         setError(data.message || 'Registration failed');
       }
@@ -59,11 +64,11 @@ const StaffRegistration = () => {
   };
 
   const roles = [
-    { value: ROLES.ADMIN, label: 'Admin' },
+    { value: ROLES.COORDINATOR, label: 'Coordinator' },
     { value: ROLES.PRINCIPAL, label: 'Principal' },
     { value: ROLES.HOD, label: 'HOD' },
     { value: ROLES.TEACHER, label: 'Teacher' },
-    { value: ROLES.CARETAKER, label: 'Caretaker' },
+    { value: ROLES.SECURITY, label: 'Security / Gate Entry' },
   ];
 
   return (
@@ -73,8 +78,8 @@ const StaffRegistration = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-sm mb-4">
             <span className="text-3xl">👤</span>
           </div>
-          <h1 className="text-2xl font-semibold text-gray-800">Staff Registration</h1>
-          <p className="text-gray-500 text-sm">Create a new staff account</p>
+          <h1 className="text-2xl font-semibold text-gray-800">Create Staff Account</h1>
+          <p className="text-gray-500 text-sm">Admin-only account creation for teachers, staff, and gate security</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -164,10 +169,10 @@ const StaffRegistration = () => {
             </button>
 
             <Link
-              to="/login"
+              to="/"
               className="block w-full py-2.5 text-center border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-xl transition-all"
             >
-              Back to Login
+              Back to Dashboard
             </Link>
           </form>
         </div>

@@ -884,7 +884,7 @@ const ClassManagement = () => {
                 disabled={loading}
                 className="me-2"
               >
-                📋 View Subjects
+                View Subjects
               </Button>
             )}
             {/* Add Subject - Available to admins and coordinators */}
@@ -895,7 +895,7 @@ const ClassManagement = () => {
                 disabled={loading}
                 className="me-2"
               >
-                ➕ Add Subject
+                Add Subject
               </Button>
             )}
             {/* Create Class - Available to admins, principals, and HODs */}
@@ -913,10 +913,10 @@ const ClassManagement = () => {
 
       <Tabs activeKey={activeTab} onSelect={setActiveTab} className="mb-4">
         <Tab eventKey="list" title="Classes List">
-          <Card>
-            <Card.Header>
-              <Row>
-                <Col md={3}>
+          <Card className="filter-panel">
+            <Card.Header className="filter-panel-header">
+              <Row className="filter-grid g-3 align-items-end">
+                <Col xs={12} md={6} xl={3}>
                   <InputGroup>
                     <Form.Control
                       type="text"
@@ -926,7 +926,7 @@ const ClassManagement = () => {
                     />
                   </InputGroup>
                 </Col>
-                <Col md={2}>
+                <Col xs={12} sm={6} xl={2}>
                   <Form.Select
                     value={filters.subject}
                     onChange={(e) => setFilters({...filters, subject: e.target.value})}
@@ -938,7 +938,7 @@ const ClassManagement = () => {
                     <option value="Philosophy">Philosophy</option>
                   </Form.Select>
                 </Col>
-                <Col md={2}>
+                <Col xs={12} sm={6} xl={2}>
                   <Form.Select
                     value={filters.status}
                     onChange={(e) => setFilters({...filters, status: e.target.value})}
@@ -948,7 +948,7 @@ const ClassManagement = () => {
                     <option value="completed">Completed</option>
                   </Form.Select>
                 </Col>
-                <Col md={3}>
+                <Col xs={12} sm={6} xl={3}>
                   <Form.Select
                     value={filters.showAllYears === 'true' ? 'all' : filters.academicYear}
                     onChange={(e) => {
@@ -968,12 +968,13 @@ const ClassManagement = () => {
                   </Form.Select>
                 </Col>
                 {user?.role !== ROLES.TEACHER && (
-                  <Col md={2}>
+                  <Col xs={12} sm={6} xl={2}>
                     <Form.Check
                       type="checkbox"
                       label="My Classes Only"
                       checked={filters.myClasses === 'true'}
                       onChange={(e) => setFilters({...filters, myClasses: e.target.checked ? 'true' : 'false'})}
+                      className="filter-switch"
                     />
                   </Col>
                 )}
@@ -1066,7 +1067,7 @@ const ClassManagement = () => {
                               {canMarkAttendance(classItem) && (
                                 <>
                                   <Dropdown.Item onClick={() => handleMarkAttendanceClick(classItem)}>
-                                    📝 Mark Attendance
+                                    Mark Attendance
                                   </Dropdown.Item>
                                   <Dropdown.Divider />
                                 </>
@@ -1112,7 +1113,7 @@ const ClassManagement = () => {
           </Card>
         </Tab>
 
-        <Tab eventKey="attendance-reports" title="📊 Attendance Reports">
+        <Tab eventKey="attendance-reports" title="Attendance Reports">
           <Card>
             <Card.Header>
               <h5 className="mb-0">Class Attendance Reports</h5>
@@ -1123,7 +1124,7 @@ const ClassManagement = () => {
                 <Col md={6}>
                   <Card className="h-100" style={{ border: '2px solid #0d6efd' }}>
                     <Card.Body>
-                      <h6 className="mb-3">📋 Per Class Attendance Report</h6>
+                      <h6 className="mb-3">Per Class Attendance Report</h6>
                       <Form.Group className="mb-3">
                         <Form.Label>Select Class *</Form.Label>
                         <Form.Select
@@ -1160,7 +1161,7 @@ const ClassManagement = () => {
                         disabled={loading || !selectedReportClass}
                         className="w-100"
                       >
-                        {loading ? <Spinner animation="border" size="sm" /> : '📊 Generate Report'}
+                        {loading ? <Spinner animation="border" size="sm" /> : 'Generate Report'}
                       </Button>
                     </Card.Body>
                   </Card>
@@ -1170,7 +1171,7 @@ const ClassManagement = () => {
                 <Col md={6}>
                   <Card className="h-100" style={{ border: '2px solid #28a745' }}>
                     <Card.Body>
-                      <h6 className="mb-3">📅 All Classes Attendance by Date</h6>
+                      <h6 className="mb-3">All Classes Attendance by Date</h6>
                       <Form.Group className="mb-3">
                         <Form.Label>Select Date *</Form.Label>
                         <Form.Control
@@ -1188,7 +1189,7 @@ const ClassManagement = () => {
                         disabled={loading || !selectedReportDate}
                         className="w-100"
                       >
-                        {loading ? <Spinner animation="border" size="sm" /> : '📅 Generate Report'}
+                        {loading ? <Spinner animation="border" size="sm" /> : 'Generate Report'}
                       </Button>
                     </Card.Body>
                   </Card>
@@ -1391,7 +1392,7 @@ const ClassManagement = () => {
             </Row>
 
             <hr />
-            <h6 className="mb-3">📅 Schedule & Timing</h6>
+            <h6 className="mb-3">Schedule & Timing</h6>
             <Form.Group className="mb-3">
               <Form.Label>Days of Week *</Form.Label>
               <div className="d-flex flex-wrap gap-2">
@@ -1641,7 +1642,7 @@ const ClassManagement = () => {
             )}
 
             <hr />
-            <h6 className="mb-3">👨‍🏫 Teacher Assignment</h6>
+            <h6 className="mb-3">Teacher Assignment</h6>
             <Form.Group className="mb-3">
               <Form.Label>Class Teacher *</Form.Label>
               <Form.Select
@@ -1804,7 +1805,7 @@ const ClassManagement = () => {
           </Row>
 
             <hr />
-            <h6 className="mb-3">📅 Schedule & Timing</h6>
+            <h6 className="mb-3">Schedule & Timing</h6>
             <Form.Group className="mb-3">
               <Form.Label>Days of Week *</Form.Label>
               <div className="d-flex flex-wrap gap-2">
@@ -2054,7 +2055,7 @@ const ClassManagement = () => {
             )}
 
             <hr />
-            <h6 className="mb-3">👨‍🏫 Teacher Assignment</h6>
+            <h6 className="mb-3">Teacher Assignment</h6>
             <Form.Group className="mb-3">
               <Form.Label>Class Teacher *</Form.Label>
               <Form.Select
@@ -2169,14 +2170,14 @@ const ClassManagement = () => {
       <Modal show={showMarkAttendance} onHide={() => setShowMarkAttendance(false)} size="lg">
         <Modal.Header closeButton>
           <Modal.Title>
-            {isEditingAttendance ? '✏️ Edit Attendance' : '📝 Mark Attendance'} - {selectedClass?.className}
+            {isEditingAttendance ? 'Edit Attendance' : 'Mark Attendance'} - {selectedClass?.className}
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={(e) => { e.preventDefault(); handleMarkAttendance(); }}>
           <Modal.Body>
             {isEditingAttendance && (
               <Alert variant="warning" className="mb-3">
-                <strong>⚠️ Editing Existing Attendance:</strong> Attendance for this date already exists. Changes will update the existing record.
+                <strong>Editing Existing Attendance:</strong> Attendance for this date already exists. Changes will update the existing record.
               </Alert>
             )}
             <Alert variant="info" className="mb-3">
@@ -2211,7 +2212,7 @@ const ClassManagement = () => {
                           if (checkResponse.data.success && checkResponse.data.data?.attendance?.length > 0) {
                             const existing = checkResponse.data.data.attendance[0];
                             console.log('🔍 ===== LOADING EXISTING ATTENDANCE (FRONTEND) =====');
-                            console.log('📅 Date:', selectedDate);
+                            console.log('Date:', selectedDate);
                             console.log('📊 Existing record:', existing);
                             console.log('👥 Students in existing record:', existing.attendance?.length || 0);
                             
@@ -2304,9 +2305,9 @@ const ClassManagement = () => {
                     }}
                     required
                   >
-                    <option value="normal">📚 Normal Class</option>
-                    <option value="teacher-leave">👨‍🏫 Teacher on Leave</option>
-                    <option value="school-holiday">🏫 School Holiday</option>
+                    <option value="normal">Normal Class</option>
+                    <option value="teacher-leave">Teacher on Leave</option>
+                    <option value="school-holiday">School Holiday</option>
                   </Form.Select>
                   <Form.Text className="text-muted">
                     {attendanceType === 'teacher-leave' && 'This day will NOT count in class conducted count'}
@@ -2381,8 +2382,8 @@ const ClassManagement = () => {
                                 }}
                                 required
                               >
-                                <option value="present">✅ Present</option>
-                                <option value="absent">❌ Absent</option>
+                                <option value="present">Present</option>
+                                <option value="absent">Absent</option>
                                 <option value="late">⏰ Late</option>
                               </Form.Select>
                             </td>
@@ -2437,7 +2438,7 @@ const ClassManagement = () => {
                   Marking...
                 </>
               ) : (
-                '💾 Mark Attendance'
+                'Save Attendance'
               )}
             </Button>
           </Modal.Footer>
@@ -2447,7 +2448,7 @@ const ClassManagement = () => {
       {/* Create Subject Modal */}
       <Modal show={showSubjectModal} onHide={() => setShowSubjectModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>➕ Add New Subject</Modal.Title>
+          <Modal.Title>Add New Subject</Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubjectSubmit}>
           <Modal.Body>
@@ -2538,7 +2539,7 @@ const ClassManagement = () => {
       {/* View Subjects Modal */}
       <Modal show={showSubjectsListModal} onHide={() => setShowSubjectsListModal(false)} size="lg">
         <Modal.Header closeButton>
-          <Modal.Title>📚 All Subjects</Modal.Title>
+          <Modal.Title>All Subjects</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {loading && (
@@ -2586,7 +2587,7 @@ const ClassManagement = () => {
                             onClick={() => handleDeleteSubject(subject._id)}
                             disabled={loading}
                           >
-                            🗑️ Delete
+                            Delete
                           </Button>
                         )}
                         {!subject.isActive && (
@@ -2613,7 +2614,7 @@ const ClassManagement = () => {
                 setShowSubjectModal(true);
               }}
             >
-              ➕ Add New Subject
+              Add New Subject
             </Button>
           )}
         </Modal.Footer>
@@ -2622,7 +2623,7 @@ const ClassManagement = () => {
       {/* Per Class Attendance Report Modal */}
       <Modal show={showPerClassReportModal} onHide={() => setShowPerClassReportModal(false)} size="xl">
         <Modal.Header closeButton>
-          <Modal.Title>📋 Per Class Attendance Report</Modal.Title>
+          <Modal.Title>Per Class Attendance Report</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {loading ? (
@@ -2694,7 +2695,7 @@ const ClassManagement = () => {
       {/* All Classes Attendance by Date Modal */}
       <Modal show={showAllClassesDateReportModal} onHide={() => setShowAllClassesDateReportModal(false)} size="xl">
         <Modal.Header closeButton>
-          <Modal.Title>📅 All Classes Attendance - {selectedReportDate}</Modal.Title>
+          <Modal.Title>All Classes Attendance - {selectedReportDate}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {loading ? (

@@ -96,7 +96,7 @@ const ExamReport = () => {
             </Dropdown.Menu>
           </Dropdown>
           <Button variant="outline-secondary" size="sm" onClick={handlePrint}>
-            🖨️ Print Results
+            Print Results
           </Button>
         </div>
       </div>

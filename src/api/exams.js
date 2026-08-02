@@ -47,6 +47,11 @@ export const examsAPI = {
     return response.data;
   },
 
+  previewStudents: async (examData) => {
+    const response = await api.post('/exam-management/preview-students', examData);
+    return response.data;
+  },
+
   // Get students by entity (department, sub-department, batch, standard)
   getStudentsByEntity: async (filters = {}) => {
     const queryParams = new URLSearchParams();
@@ -136,6 +141,11 @@ export const examMarksAPI = {
   // Bulk save exam marks
   bulkSaveExamMarks: async (examId, marksData) => {
     const response = await api.post('/exam-marks-management/bulk', { examId, marksData });
+    return response.data;
+  },
+
+  bulkSaveSubjectMarks: async (examId, subjectId, marksRows) => {
+    const response = await api.post('/exam-marks/subject-bulk', { examId, subjectId, marksRows });
     return response.data;
   },
 

@@ -407,7 +407,7 @@ const ClassAttendance = () => {
                           {session.leaveInfo?.isHoliday || session.leaveInfo?.isTeacherLeave ? (
                             <div>
                               <Badge bg={session.leaveInfo.isHoliday ? 'warning' : 'info'} className="mb-1">
-                                {session.leaveInfo.isHoliday ? '🏛️ Holiday' : '👨‍🏫 Teacher Leave'}
+                                {session.leaveInfo.isHoliday ? 'Holiday' : 'Teacher Leave'}
                               </Badge>
                               {session.leaveInfo.holidayName && (
                                 <div><strong>{session.leaveInfo.holidayName}</strong></div>
@@ -589,7 +589,7 @@ const ClassAttendance = () => {
                 id="isLeaveDay"
                 label={
                   <span>
-                    <strong>📅 Mark this day as Leave / Holiday</strong>
+                    <strong>Mark this day as Leave / Holiday</strong>
                     <br />
                     <small className="text-muted">No class will be held. No attendance will be taken.</small>
                   </span>
@@ -703,7 +703,7 @@ const ClassAttendance = () => {
       <Modal show={showMarkAttendance} onHide={() => setShowMarkAttendance(false)} size="xl">
         <Modal.Header closeButton>
           <Modal.Title>
-            📋 Mark Attendance - {selectedSession?.sessionInfo?.topic || 'Class Session'}
+            Mark Attendance - {selectedSession?.sessionInfo?.topic || 'Class Session'}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
@@ -712,7 +712,7 @@ const ClassAttendance = () => {
               <Alert variant="info" className="mb-3">
                 <Row>
                   <Col md={4}>
-                    <strong>📅 Date:</strong> {new Date(selectedSession.sessionDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    <strong>Date:</strong> {new Date(selectedSession.sessionDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                   </Col>
                   <Col md={4}>
                     <strong>⏰ Time:</strong> {selectedSession.sessionStartTime} - {selectedSession.sessionEndTime}

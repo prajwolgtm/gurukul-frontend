@@ -118,7 +118,7 @@ const DailyAttendanceReport = () => {
     <div style={{ background: 'linear-gradient(180deg, #f6f8fc 0%, #ffffff 55%)', padding: '12px', borderRadius: '12px', width: '100%', boxSizing: 'border-box' }}>
       <Card className="mb-3 border-0" style={{ boxShadow: '0 4px 12px rgba(15, 23, 42, 0.06)' }}>
         <Card.Header className="bg-white border-0 d-flex justify-content-between align-items-center">
-          <h5 className="mb-0">📊 Daily Attendance Report</h5>
+          <h5 className="mb-0">Daily Attendance Report</h5>
           <div className="d-flex gap-2">
             <Button
               variant="outline-primary"
@@ -134,7 +134,7 @@ const DailyAttendanceReport = () => {
               onClick={handleDownloadExcel}
               disabled={!attendanceData || downloading}
             >
-              {downloading ? <Spinner size="sm" /> : '📊 Download Excel'}
+              {downloading ? <Spinner size="sm" /> : 'Download Excel'}
             </Button>
           </div>
         </Card.Header>
@@ -153,7 +153,7 @@ const DailyAttendanceReport = () => {
             </Col>
             <Col md={8}>
               <Button variant="primary" onClick={loadAttendance} disabled={loading}>
-                {loading ? <><Spinner size="sm" className="me-2" />Loading...</> : '🔄 Refresh'}
+                {loading ? <><Spinner size="sm" className="me-2" />Loading...</> : 'Refresh'}
               </Button>
             </Col>
           </Row>

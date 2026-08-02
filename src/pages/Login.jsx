@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { login, loginParent } from '../api/auth';
 import { useAuth } from '../store/auth';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -28,7 +28,7 @@ const Login = () => {
       const user = resp?.user || resp?.data?.user || null;
       if (!token) throw new Error('Token missing in response');
       loginSuccess(token, user);
-      navigate(isParentLogin ? '/parent-dashboard' : '/');
+      navigate(isParentLogin ? '/parent-dashboard' : user?.role === 'Security' ? '/security-scanner' : '/');
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Login failed');
     } finally {
@@ -37,68 +37,61 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-xl mb-4">
-            <span className="text-4xl">🎓</span>
+    <div className="login-page">
+      <div className="login-shell">
+        <section className="login-hero-copy">
+          <div className="login-mark">
+            <span>G</span>
           </div>
-          <h1 className="text-3xl font-bold text-white">Gurukul</h1>
-          <p className="text-white/80 mt-1">Education Management System</p>
-        </div>
+          <h1>Gurukul</h1>
+          <p>Modern school operations for students, teachers, classes, exams, attendance, and parent requests.</p>
+          <div className="login-feature-strip">
+            <span>Student records</span>
+            <span>Exam planning</span>
+            <span>Attendance</span>
+            <span>Reports</span>
+          </div>
+        </section>
 
-        {/* Login Card */}
-        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
-          {/* Tabs */}
-          <div className="flex">
+        <section>
+          <div className="login-card">
+          <div className="login-tabs">
             <button
               onClick={() => setIsParentLogin(false)}
-              className={`flex-1 py-4 text-sm font-semibold transition-all ${
-                !isParentLogin 
-                  ? 'text-violet-700 bg-violet-50 border-b-2 border-violet-500' 
-                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-              }`}
+              className={`login-tab ${!isParentLogin ? 'active' : ''}`}
             >
-              👤 Staff Login
+              Staff Login
             </button>
             <button
               onClick={() => setIsParentLogin(true)}
-              className={`flex-1 py-4 text-sm font-semibold transition-all ${
-                isParentLogin 
-                  ? 'text-emerald-700 bg-emerald-50 border-b-2 border-emerald-500' 
-                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-              }`}
+              className={`login-tab ${isParentLogin ? 'active' : ''}`}
             >
-              👨‍👩‍👧 Parent Login
+              Parent Login
             </button>
           </div>
 
-          <div className="p-8">
-            {/* Error */}
+          <div className="login-card-body">
             {error && (
-              <div className="mb-6 p-4 bg-rose-100 border-l-4 border-rose-500 text-rose-700 rounded-xl text-sm font-medium">
-                ⚠️ {error}
+              <div className="login-error">
+                {error}
               </div>
             )}
 
-            <form onSubmit={onSubmit} className="space-y-5">
-              {/* Email */}
+            <form onSubmit={onSubmit} className="login-form">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Email Address
+                  {isParentLogin ? 'Parent Phone or Email' : 'Email Address'}
                 </label>
                 <input
-                  type="email"
+                  type={isParentLogin ? 'text' : 'email'}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
+                  placeholder={isParentLogin ? 'Phone number or parent email' : 'Enter your email'}
                   required
-                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 transition-all text-slate-800"
+                  className="form-control"
                 />
               </div>
 
-              {/* Password or DOB */}
               {isParentLogin ? (
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -111,7 +104,7 @@ const Login = () => {
                     placeholder="DDMMYYYY (e.g., 16082002)"
                     maxLength={8}
                     required
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 transition-all text-slate-800 font-mono tracking-wider"
+                    className="form-control font-mono"
                   />
                   <p className="mt-2 text-xs text-slate-500">Format: DDMMYYYY</p>
                 </div>
@@ -126,20 +119,15 @@ const Login = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
                     required
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 transition-all text-slate-800"
+                    className="form-control"
                   />
                 </div>
               )}
 
-              {/* Submit */}
               <button
                 type="submit"
                 disabled={loading || (isParentLogin && dob.length !== 8)}
-                className={`w-full py-3.5 rounded-xl font-semibold text-white text-lg transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg ${
-                  isParentLogin
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-emerald-200'
-                    : 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-violet-200'
-                }`}
+                className="login-button"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -155,30 +143,16 @@ const Login = () => {
               </button>
             </form>
 
-            {/* Register */}
-            {!isParentLogin && (
-              <p className="mt-6 text-center text-sm text-slate-600">
-                Need a staff account?{' '}
-                <Link to="/register-staff" className="text-violet-600 hover:text-violet-700 font-semibold">
-                  Register here
-                </Link>
-              </p>
-            )}
-
-            {/* Test Accounts */}
-            <div className="mt-8 pt-6 border-t border-slate-200">
-              <p className="text-xs text-slate-400 text-center mb-3 font-medium">TEST ACCOUNTS</p>
-              <div className="bg-slate-50 rounded-xl p-4 text-sm text-slate-600 space-y-1">
-                <p><span className="font-semibold">Admin:</span> admin@demo.com / admin123</p>
-              </div>
+            <div className="login-test-box">
+              <p><span className="font-semibold">Admin:</span> admin@demo.com / admin123</p>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-white/60 text-sm mt-8">
-          © 2025 Gurukul Education System
+        <p className="login-footer">
+          Gurukul Education System
         </p>
+        </section>
       </div>
     </div>
   );
