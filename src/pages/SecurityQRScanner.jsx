@@ -2,8 +2,14 @@ import { useState, useRef, useEffect } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import api from '../api/client';
 
+const isSecureCameraContext = () => {
+  if (typeof window === 'undefined') return true;
+  return window.isSecureContext || ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+};
+
 const SecurityQRScanner = () => {
   const [scanning, setScanning] = useState(false);
+  const [startingCamera, setStartingCamera] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -11,8 +17,13 @@ const SecurityQRScanner = () => {
   const [showManual, setShowManual] = useState(false);
   const [insideVisitors, setInsideVisitors] = useState([]);
   const [insideLoading, setInsideLoading] = useState(false);
+  const [cameraDevices, setCameraDevices] = useState([]);
+  const [selectedCameraId, setSelectedCameraId] = useState('');
+  const [cameraNotice, setCameraNotice] = useState('');
   const scannerRef = useRef(null);
   const html5QrCodeRef = useRef(null);
+  const fileScannerRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     return () => {
@@ -25,7 +36,62 @@ const SecurityQRScanner = () => {
 
   useEffect(() => {
     loadInsideVisitors();
+    primeCameraInfo();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('scan') === '1') {
+      setCameraNotice('Tap Start Camera Scanner to open the camera permission prompt.');
+    }
+  }, []);
+
+  const waitForScannerElement = async () => {
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      if (scannerRef.current) return scannerRef.current;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    return null;
+  };
+
+  const primeCameraInfo = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraNotice('This browser does not expose camera access. Use Chrome/Safari or scan from a saved QR photo.');
+      return;
+    }
+
+    if (!isSecureCameraContext()) {
+      setCameraNotice('Camera scanning requires HTTPS on phones. Open this site with https:// or use localhost during development.');
+      return;
+    }
+
+    if (navigator.permissions?.query) {
+      try {
+        const permission = await navigator.permissions.query({ name: 'camera' });
+        if (permission.state === 'denied') {
+          setCameraNotice('Camera permission is blocked for this site. Enable it from browser site settings, then tap Start Camera Scanner again.');
+        }
+        permission.onchange = () => {
+          if (permission.state === 'denied') {
+            setCameraNotice('Camera permission is blocked for this site. Enable it from browser site settings, then tap Start Camera Scanner again.');
+          } else {
+            setCameraNotice('');
+          }
+        };
+      } catch (err) {
+        // Safari may not support camera permission querying. The real prompt still opens from getUserMedia.
+      }
+    }
+
+    try {
+      const cameras = await Html5Qrcode.getCameras();
+      setCameraDevices(cameras || []);
+      const backCamera = (cameras || []).find(camera => /back|rear|environment/i.test(camera.label));
+      setSelectedCameraId((backCamera || cameras?.[0])?.id || '');
+    } catch (err) {
+      // Device labels/camera list can be hidden until the user grants permission.
+    }
+  };
 
   const loadInsideVisitors = async () => {
     setInsideLoading(true);
@@ -43,26 +109,71 @@ const SecurityQRScanner = () => {
     try {
       setError('');
       setResult(null);
+      setStartingCamera(true);
+      setScanning(true);
       
-      if (!scannerRef.current) {
-        setError('Scanner element not found. Please refresh the page.');
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError('This browser cannot open the camera. Please use Chrome on Android, Safari on iPhone, or scan from a QR photo.');
+        setScanning(false);
         return;
       }
 
-      const html5QrCode = new Html5Qrcode(scannerRef.current.id);
+      if (!isSecureCameraContext()) {
+        setError('Camera access is blocked because this page is not running on HTTPS. Open the staff portal with https:// on phones, then try again.');
+        setScanning(false);
+        return;
+      }
+
+      const scannerElement = await waitForScannerElement();
+      if (!scannerElement) {
+        setError('Scanner could not open. Please refresh the page and try again.');
+        setScanning(false);
+        return;
+      }
+
+      if (html5QrCodeRef.current?.isScanning) {
+        await html5QrCodeRef.current.stop();
+        await html5QrCodeRef.current.clear();
+      }
+
+      const html5QrCode = new Html5Qrcode(scannerElement.id, { verbose: false });
       html5QrCodeRef.current = html5QrCode;
 
-      // Try back camera first (for mobile devices)
-      let cameraConfig = { facingMode: 'environment' };
-      let qrboxSize = { width: 250, height: 250 };
+      const cameras = cameraDevices.length ? cameraDevices : await Html5Qrcode.getCameras().catch(() => []);
+      if (cameras.length) {
+        setCameraDevices(cameras);
+        const backCamera = cameras.find(camera => /back|rear|environment/i.test(camera.label));
+        if (!selectedCameraId) setSelectedCameraId((backCamera || cameras[0]).id);
+      }
+
+      const cameraConfig = selectedCameraId
+        ? { deviceId: { exact: selectedCameraId } }
+        : { facingMode: { ideal: 'environment' } };
+      const fallbackConfig = { facingMode: 'environment' };
+      const qrboxSize = (viewfinderWidth, viewfinderHeight) => {
+        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+        const size = Math.max(220, Math.floor(minEdge * 0.72));
+        return { width: size, height: size };
+      };
+      const scannerConfig = {
+        fps: 12,
+        qrbox: qrboxSize,
+        aspectRatio: 1,
+        disableFlip: false,
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        },
+        videoConstraints: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      };
       
       try {
         await html5QrCode.start(
           cameraConfig,
-          {
-            fps: 10,
-            qrbox: qrboxSize
-          },
+          scannerConfig,
           (decodedText) => {
             // QR code scanned successfully
             handleQRScan(decodedText);
@@ -77,17 +188,18 @@ const SecurityQRScanner = () => {
         );
         
         setScanning(true);
+        setCameraNotice('');
       } catch (cameraErr) {
         // If back camera fails, try user-facing camera (front camera)
-        if (cameraErr.name === 'NotAllowedError' || cameraErr.name === 'NotFoundError') {
+        if (
+          cameraErr.name === 'OverconstrainedError' ||
+          cameraErr.name === 'NotFoundError' ||
+          cameraErr.message?.includes('Requested device not found')
+        ) {
           try {
-            cameraConfig = { facingMode: 'user' }; // Try front camera
             await html5QrCode.start(
-              cameraConfig,
-              {
-                fps: 10,
-                qrbox: qrboxSize
-              },
+              fallbackConfig,
+              scannerConfig,
               (decodedText) => {
                 handleQRScan(decodedText);
               },
@@ -96,6 +208,7 @@ const SecurityQRScanner = () => {
               }
             );
             setScanning(true);
+            setCameraNotice('');
           } catch (fallbackErr) {
             // Both cameras failed
             throw fallbackErr;
@@ -135,6 +248,8 @@ const SecurityQRScanner = () => {
         }
         html5QrCodeRef.current = null;
       }
+    } finally {
+      setStartingCamera(false);
     }
   };
 
@@ -145,9 +260,36 @@ const SecurityQRScanner = () => {
         await html5QrCodeRef.current.clear();
       }
       setScanning(false);
+      setStartingCamera(false);
     } catch (err) {
       console.error('Error stopping scanner:', err);
       setScanning(false);
+      setStartingCamera(false);
+    }
+  };
+
+  const handleScanFromImage = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    setError('');
+    setResult(null);
+    try {
+      if (html5QrCodeRef.current?.isScanning) {
+        await stopScanning();
+      }
+      const scannerId = fileScannerRef.current?.id || scannerRef.current?.id || 'qr-file-reader';
+      const html5QrCode = html5QrCodeRef.current || new Html5Qrcode(scannerId, { verbose: false });
+      html5QrCodeRef.current = html5QrCode;
+      const decodedText = await html5QrCode.scanFile(file, true);
+      await verifyQRCode(decodedText);
+    } catch (err) {
+      console.error('QR image scan error:', err);
+      setError('Could not read a QR code from this image. Please take a clearer photo or use manual entry.');
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -274,10 +416,17 @@ const SecurityQRScanner = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <div className="max-w-4xl mx-auto">
+        <div id="qr-file-reader" ref={fileScannerRef} className="hidden" />
         <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
           <h1 className="text-3xl font-bold text-slate-800 mb-2">Security QR Scanner</h1>
           <p className="text-slate-600">Scan QR codes to verify leave and visit passes</p>
         </div>
+
+        {cameraNotice && !error && (
+          <div className="bg-amber-50 border-l-4 border-amber-400 text-amber-800 p-4 rounded-xl mb-6">
+            {cameraNotice}
+          </div>
+        )}
 
         {error && (
           <div className="bg-rose-100 border-l-4 border-rose-500 text-rose-800 p-4 rounded-xl mb-6">
@@ -290,8 +439,9 @@ const SecurityQRScanner = () => {
                 <p className="font-semibold mb-1">Alternative options:</p>
                 <ul className="list-disc list-inside space-y-1 text-rose-700">
                   <li>Use <strong>Manual Entry</strong> button below to enter QR code data or request ID</li>
+                  <li>Use <strong>Scan from Photo</strong> if the parent can share or display a QR screenshot</li>
                   <li>Check browser settings to allow camera access for this site</li>
-                  <li>Try using a different browser or device</li>
+                  <li>On phones, camera scanning works only on HTTPS sites or localhost</li>
                 </ul>
               </div>
             )}
@@ -350,20 +500,52 @@ const SecurityQRScanner = () => {
 
         {!result && !scanning && (
           <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-            <div className="flex flex-col sm:flex-row gap-4">
+            {cameraDevices.length > 1 && (
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Camera</label>
+                <select
+                  value={selectedCameraId}
+                  onChange={(event) => setSelectedCameraId(event.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-violet-500"
+                >
+                  {cameraDevices.map((camera, index) => (
+                    <option key={camera.id} value={camera.id}>
+                      {camera.label || `Camera ${index + 1}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <button
                 onClick={startScanning}
-                className="flex-1 px-6 py-4 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors flex items-center justify-center gap-2"
+                disabled={startingCamera || loading}
+                className="px-6 py-4 bg-violet-600 text-white rounded-xl font-semibold hover:bg-violet-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-wait"
               >
-                <span>Start Camera Scanner</span>
+                <span>{startingCamera ? 'Opening Camera...' : 'Start Camera Scanner'}</span>
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={loading}
+                className="px-6 py-4 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                <span>Scan from Photo</span>
               </button>
               <button
                 onClick={() => setShowManual(!showManual)}
-                className="flex-1 px-6 py-4 bg-slate-600 text-white rounded-xl font-semibold hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
+                className="px-6 py-4 bg-slate-600 text-white rounded-xl font-semibold hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
               >
                 <span>Manual Entry</span>
               </button>
             </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleScanFromImage}
+              className="hidden"
+            />
 
             {showManual && (
               <div className="mt-6 p-4 bg-slate-50 rounded-xl">
@@ -398,6 +580,14 @@ const SecurityQRScanner = () => {
 
         {scanning && (
           <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleScanFromImage}
+              className="hidden"
+            />
             <div className="relative">
               <div
                 id="qr-reader"
@@ -414,20 +604,44 @@ const SecurityQRScanner = () => {
                 </button>
               </div>
             </div>
+            {startingCamera && (
+              <div className="mt-4 rounded-xl bg-violet-50 p-4 text-sm font-semibold text-violet-800">
+                Opening camera permission. Choose Allow when the browser asks.
+              </div>
+            )}
             <div className="mt-4">
-              <p className="text-sm text-slate-600 mb-2">Or enter QR code manually:</p>
-              <input
-                type="text"
-                value={manualCode}
-                onChange={(e) => setManualCode(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && manualCode.trim()) {
-                    handleQRScan(manualCode.trim());
-                  }
-                }}
-                placeholder="Paste QR code data here and press Enter"
-                className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500"
-              />
+              <div className="flex flex-col sm:flex-row gap-3 mb-3">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={loading}
+                  className="flex-1 px-4 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  Scan from Photo
+                </button>
+                <button
+                  onClick={() => setShowManual(!showManual)}
+                  className="flex-1 px-4 py-3 bg-slate-200 text-slate-800 rounded-lg font-semibold hover:bg-slate-300"
+                >
+                  Manual Entry
+                </button>
+              </div>
+              {showManual && (
+                <>
+                  <p className="text-sm text-slate-600 mb-2">Or enter QR code manually:</p>
+                  <input
+                    type="text"
+                    value={manualCode}
+                    onChange={(e) => setManualCode(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && manualCode.trim()) {
+                        handleQRScan(manualCode.trim());
+                      }
+                    }}
+                    placeholder="Paste QR code data here and press Enter"
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500"
+                  />
+                </>
+              )}
             </div>
           </div>
         )}
