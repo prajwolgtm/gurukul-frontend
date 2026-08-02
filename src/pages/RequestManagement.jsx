@@ -8,7 +8,7 @@ import { ROLES } from '../utils/roles';
 import { 
   getLeaveRequests, createLeaveRequest, reviewLeaveRequest,
   getVisitRequests, createVisitRequest, reviewVisitRequest,
-  rescheduleLeaveRequest, rescheduleVisitRequest
+  rescheduleLeaveRequest, rescheduleVisitRequest, approveLeaveChildExit
 } from '../api/requests';
 import AcademicYearFilter from '../components/AcademicYearFilter';
 
@@ -25,6 +25,7 @@ const RequestManagement = () => {
   const [showVisitModal, setShowVisitModal] = useState(false);
   const [showRescheduleLeaveModal, setShowRescheduleLeaveModal] = useState(false);
   const [showRescheduleVisitModal, setShowRescheduleVisitModal] = useState(false);
+  const [showChildExitModal, setShowChildExitModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   
   // Form states
@@ -192,8 +193,33 @@ const RequestManagement = () => {
     }
   };
 
+  const handleApproveChildExit = async (e) => {
+    e.preventDefault();
+    if (!selectedRequest) return;
+    try {
+      const formData = new FormData(e.target);
+      const response = await approveLeaveChildExit(selectedRequest._id || selectedRequest.id, {
+        expectedDropDate: formData.get('expectedDropDate'),
+        expectedDropTime: formData.get('expectedDropTime'),
+        notes: formData.get('notes')
+      });
+
+      if (response.success) {
+        setShowChildExitModal(false);
+        setSelectedRequest(null);
+        await loadRequests();
+      } else {
+        setError(response.message || 'Failed to approve child exit');
+      }
+    } catch (error) {
+      console.error('Error approving child exit:', error);
+      setError(error?.response?.data?.message || 'Failed to approve child exit. Please try again.');
+    }
+  };
+
   const canReviewRequests = user?.role === ROLES.ADMIN || user?.role === ROLES.PRINCIPAL || user?.role === ROLES.HOD || user?.role === ROLES.COORDINATOR;
   const canReschedule = user?.role === ROLES.ADMIN || user?.role === ROLES.PRINCIPAL || user?.role === ROLES.COORDINATOR;
+  const canApproveChildExit = user?.role === ROLES.ADMIN || user?.role === ROLES.PRINCIPAL || user?.role === ROLES.COORDINATOR;
   const isParent = user?.role === ROLES.PARENT;
 
   if (loading) {
@@ -258,6 +284,7 @@ const RequestManagement = () => {
                     <th>Duration</th>
                     <th>Reason</th>
                     <th>Status</th>
+                    <th>Gate Flow</th>
                     <th>Requested By</th>
                     <th>Actions</th>
                   </tr>
@@ -281,6 +308,17 @@ const RequestManagement = () => {
                         }>
                           {request.status}
                         </Badge>
+                      </td>
+                      <td>
+                        <div className="small">
+                          <div>{request.qrPass?.gateStatus?.replaceAll('_', ' ') || 'Not started'}</div>
+                          {request.qrPass?.expectedDropAt && (
+                            <div className="text-muted">Drop by {new Date(request.qrPass.expectedDropAt).toLocaleString()}</div>
+                          )}
+                          {request.qrPass?.childReturnLateByMinutes > 0 && (
+                            <Badge bg="danger">Dropped late by {request.qrPass.childReturnLateByMinutes} min</Badge>
+                          )}
+                        </div>
                       </td>
                       <td>{request.requestedBy?.fullName || request.requestedBy || 'N/A'}</td>
                       <td>
@@ -313,6 +351,19 @@ const RequestManagement = () => {
                             }}
                           >
                             Reschedule
+                          </Button>
+                        )}
+                        {canApproveChildExit && request.status === 'approved' && request.qrPass?.entryTime && !request.qrPass?.childExitApprovedAt && (
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            className="ms-1"
+                            onClick={() => {
+                              setSelectedRequest(request);
+                              setShowChildExitModal(true);
+                            }}
+                          >
+                            Approve Child Exit
                           </Button>
                         )}
                         {isParent && request.status === 'pending' && (
@@ -606,6 +657,54 @@ const RequestManagement = () => {
             <Button variant="primary" type="submit">
               Schedule Visit
             </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      <Modal show={showChildExitModal} onHide={() => { setShowChildExitModal(false); setSelectedRequest(null); }} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Approve Child Exit</Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleApproveChildExit}>
+          <Modal.Body>
+            {selectedRequest && (
+              <>
+                <Alert variant="info">
+                  <div><strong>Request:</strong> {selectedRequest.requestId}</div>
+                  <div><strong>Student:</strong> {selectedRequest.student?.name || 'N/A'}</div>
+                  <div><strong>Parent entered:</strong> {selectedRequest.qrPass?.entryTime ? new Date(selectedRequest.qrPass.entryTime).toLocaleString() : 'N/A'}</div>
+                </Alert>
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Expected Drop Date</Form.Label>
+                      <Form.Control
+                        type="date"
+                        name="expectedDropDate"
+                        defaultValue={selectedRequest.endDate ? new Date(selectedRequest.endDate).toISOString().slice(0, 10) : ''}
+                        required
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Expected Drop Time</Form.Label>
+                      <Form.Control type="time" name="expectedDropTime" defaultValue="18:00" required />
+                    </Form.Group>
+                  </Col>
+                </Row>
+                <Form.Group className="mb-3">
+                  <Form.Label>Approval Notes</Form.Label>
+                  <Form.Control as="textarea" rows={3} name="notes" placeholder="Optional note for leave handover..." />
+                </Form.Group>
+              </>
+            )}
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => { setShowChildExitModal(false); setSelectedRequest(null); }}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit">Approve and Generate Child Exit QR</Button>
           </Modal.Footer>
         </Form>
       </Modal>

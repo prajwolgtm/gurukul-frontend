@@ -62,6 +62,11 @@ export const rescheduleVisitRequest = async (id, rescheduleData) => {
   return data;
 };
 
+export const approveLeaveChildExit = async (id, approvalData) => {
+  const { data } = await api.put(`/requests/gate/leave/${id}/approve-child-exit`, approvalData);
+  return data;
+};
+
 // Dashboard summary
 export const getRequestsDashboard = async () => {
   const { data } = await api.get('/requests/dashboard');

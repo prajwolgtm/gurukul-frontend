@@ -60,8 +60,8 @@ const ParentDashboard = () => {
     }
     if (pass.childOutTime && pass.childReturnPass?.qrData) {
       return {
-        label: 'Show Return QR',
-        qrLabel: 'Return Pass',
+        label: 'Show Drop QR',
+        qrLabel: 'Drop Pass',
         qrData: pass.childReturnPass.qrData,
         validUntil: pass.childReturnPass.validUntil,
         gateStatus: pass.gateStatus
@@ -548,12 +548,22 @@ const ParentDashboard = () => {
                               </div>
                               <p className="text-sm text-slate-600 mb-1">{new Date(req.startDate).toLocaleDateString()} - {new Date(req.endDate).toLocaleDateString()}</p>
                               <p className="text-sm text-slate-500 mb-3">{req.reason}</p>
+                              {req.qrPass?.expectedDropAt && (
+                                <p className="text-sm text-slate-700 mb-2">
+                                  Drop by: <strong>{new Date(req.qrPass.expectedDropAt).toLocaleString()}</strong>
+                                </p>
+                              )}
+                              {req.qrPass?.childReturnLateByMinutes > 0 && (
+                                <div className="rounded-lg bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 mb-3">
+                                  Child was dropped late by {req.qrPass.childReturnLateByMinutes} minutes.
+                                </div>
+                              )}
                               {req.status === 'approved' && req.qrPass?.qrData && (() => {
                                 const stage = getLeaveQRStage(req);
                                 if (stage.isComplete) {
                                   return (
                                     <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-                                      Leave completed. Student has returned to Gurukul.
+                                      Leave completed. Student has been dropped back to Gurukul.
                                     </div>
                                   );
                                 }
@@ -577,7 +587,9 @@ const ParentDashboard = () => {
                                         gateStatus: stage.gateStatus,
                                         entryTime: req.qrPass.entryTime,
                                         childOutTime: req.qrPass.childOutTime,
-                                        childReturnTime: req.qrPass.childReturnTime
+                                        childReturnTime: req.qrPass.childReturnTime,
+                                        expectedDropAt: req.qrPass.expectedDropAt,
+                                        childReturnLateByMinutes: req.qrPass.childReturnLateByMinutes
                                       });
                                       setShowQRModal(true);
                                     }}
@@ -926,9 +938,19 @@ const ParentDashboard = () => {
                       ✓ Child went out: {new Date(selectedQR.childOutTime).toLocaleString()}
                     </p>
                   )}
+                  {selectedQR.expectedDropAt && (
+                    <p className="text-xs text-slate-600">
+                      Drop by: {new Date(selectedQR.expectedDropAt).toLocaleString()}
+                    </p>
+                  )}
                   {selectedQR.childReturnTime && (
                     <p className="text-xs text-emerald-600">
-                      ✓ Child returned: {new Date(selectedQR.childReturnTime).toLocaleString()}
+                      ✓ Child dropped: {new Date(selectedQR.childReturnTime).toLocaleString()}
+                    </p>
+                  )}
+                  {selectedQR.childReturnLateByMinutes > 0 && (
+                    <p className="text-xs text-rose-600">
+                      Dropped late by {selectedQR.childReturnLateByMinutes} minutes
                     </p>
                   )}
                 </div>
@@ -955,7 +977,7 @@ const ParentDashboard = () => {
                   <>
                     <li>Parent Entry QR is scanned when parent enters Gurukul</li>
                     <li>Child Exit QR appears after staff approves child outgoing</li>
-                    <li>Return QR is used when the child comes back to Gurukul</li>
+                    <li>Drop QR is used when the child comes back to Gurukul</li>
                   </>
                 )}
               </ul>

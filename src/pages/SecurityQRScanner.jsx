@@ -406,19 +406,6 @@ const SecurityQRScanner = () => {
     }
   };
 
-  const handleApproveChildExit = async (leaveId) => {
-    setLoading(true);
-    setError('');
-    try {
-      await api.put(`/requests/gate/leave/${leaveId}/approve-child-exit`);
-      await loadInsideVisitors();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Could not approve child exit');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const reset = () => {
     setResult(null);
     setError('');
@@ -500,18 +487,14 @@ const SecurityQRScanner = () => {
                         <p className="mt-2 inline-flex rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700">
                           {visitor.gateStatus === 'child_exit_approved_waiting_scan'
                             ? 'Child exit approved. Waiting for QR scan.'
-                            : 'Parent inside. Child exit approval pending.'}
+                            : 'Parent inside. Waiting for Admin/Principal approval.'}
                         </p>
                       )}
                     </div>
                     {visitor.type === 'leave' ? (
-                      <button
-                        onClick={() => handleApproveChildExit(visitor.id)}
-                        disabled={loading || visitor.gateStatus === 'child_exit_approved_waiting_scan'}
-                        className="px-4 py-2 bg-violet-600 text-white rounded-lg font-semibold hover:bg-violet-700 disabled:opacity-50"
-                      >
-                        {visitor.gateStatus === 'child_exit_approved_waiting_scan' ? 'Approved' : 'Approve Child Exit'}
-                      </button>
+                      <span className="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">
+                        Scan Only
+                      </span>
                     ) : (
                       <button
                         onClick={() => handleCheckoutVisitor(visitor.id)}
