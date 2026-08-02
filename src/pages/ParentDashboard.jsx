@@ -53,9 +53,59 @@ const ParentDashboard = () => {
   const [showQRModal, setShowQRModal] = useState(false);
   const [selectedQR, setSelectedQR] = useState(null);
 
+  const getLeaveQRStage = (req) => {
+    const pass = req.qrPass || {};
+    if (pass.childReturnTime) {
+      return { label: 'Leave Completed', qrData: null, validUntil: pass.childReturnPass?.validUntil || pass.validUntil, isComplete: true };
+    }
+    if (pass.childOutTime && pass.childReturnPass?.qrData) {
+      return {
+        label: 'Show Return QR',
+        qrLabel: 'Return Pass',
+        qrData: pass.childReturnPass.qrData,
+        validUntil: pass.childReturnPass.validUntil,
+        gateStatus: pass.gateStatus
+      };
+    }
+    if (pass.childExitApprovedAt && pass.childExitPass?.qrData) {
+      return {
+        label: 'Show Child Exit QR',
+        qrLabel: 'Child Exit Pass',
+        qrData: pass.childExitPass.qrData,
+        validUntil: pass.childExitPass.validUntil,
+        gateStatus: pass.gateStatus
+      };
+    }
+    if (pass.entryTime) {
+      return {
+        label: 'Waiting for Child Exit Approval',
+        qrData: null,
+        validUntil: pass.validUntil,
+        gateStatus: pass.gateStatus,
+        waiting: true
+      };
+    }
+    return {
+      label: 'Show Parent Entry QR',
+      qrLabel: 'Parent Entry Pass',
+      qrData: pass.qrData,
+      validUntil: pass.validUntil,
+      gateStatus: pass.gateStatus,
+      isUsed: pass.isUsed
+    };
+  };
+
   useEffect(() => {
     loadData();
   }, [activeTab, examFilters]);
+
+  useEffect(() => {
+    if (activeTab !== 'requests') return undefined;
+    const intervalId = setInterval(() => {
+      loadData();
+    }, 15000);
+    return () => clearInterval(intervalId);
+  }, [activeTab]);
 
   const loadData = async () => {
     setLoading(true);
@@ -498,24 +548,46 @@ const ParentDashboard = () => {
                               </div>
                               <p className="text-sm text-slate-600 mb-1">{new Date(req.startDate).toLocaleDateString()} - {new Date(req.endDate).toLocaleDateString()}</p>
                               <p className="text-sm text-slate-500 mb-3">{req.reason}</p>
-                              {req.status === 'approved' && req.qrPass?.qrData && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedQR({
-                                      type: 'leave',
-                                      requestId: req.requestId,
-                                      qrData: req.qrPass.qrData,
-                                      validUntil: req.qrPass.validUntil,
-                                      isUsed: req.qrPass.isUsed
-                                    });
-                                    setShowQRModal(true);
-                                  }}
-                                  className="w-full px-4 py-2 bg-violet-600 text-white rounded-lg font-semibold hover:bg-violet-700 transition-colors flex items-center justify-center gap-2"
-                                >
-                                  <span>📱</span>
-                                  <span>Show QR Pass</span>
-                                </button>
-                              )}
+                              {req.status === 'approved' && req.qrPass?.qrData && (() => {
+                                const stage = getLeaveQRStage(req);
+                                if (stage.isComplete) {
+                                  return (
+                                    <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                                      Leave completed. Student has returned to Gurukul.
+                                    </div>
+                                  );
+                                }
+                                if (stage.waiting) {
+                                  return (
+                                    <div className="rounded-lg bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+                                      Parent entry recorded. Please wait for staff to approve child exit.
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    onClick={() => {
+                                      setSelectedQR({
+                                        type: 'leave',
+                                        title: stage.qrLabel || 'Leave Pass',
+                                        requestId: req.requestId,
+                                        qrData: stage.qrData,
+                                        validUntil: stage.validUntil,
+                                        isUsed: stage.isUsed,
+                                        gateStatus: stage.gateStatus,
+                                        entryTime: req.qrPass.entryTime,
+                                        childOutTime: req.qrPass.childOutTime,
+                                        childReturnTime: req.qrPass.childReturnTime
+                                      });
+                                      setShowQRModal(true);
+                                    }}
+                                    className="w-full px-4 py-2 bg-violet-600 text-white rounded-lg font-semibold hover:bg-violet-700 transition-colors flex items-center justify-center gap-2"
+                                  >
+                                    <span>📱</span>
+                                    <span>{stage.label}</span>
+                                  </button>
+                                );
+                              })()}
                             </div>
                           ))}
                         </div>
@@ -798,7 +870,7 @@ const ParentDashboard = () => {
           <div className="bg-white rounded-2xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-slate-800">
-                {selectedQR.type === 'leave' ? 'Leave Pass' : 'Visit Pass'}
+                {selectedQR.title || (selectedQR.type === 'leave' ? 'Leave Pass' : 'Visit Pass')}
               </h2>
               <button 
                 onClick={() => setShowQRModal(false)} 
@@ -842,6 +914,25 @@ const ParentDashboard = () => {
                   )}
                 </div>
               )}
+              {selectedQR.type === 'leave' && (
+                <div className="mt-3 space-y-1">
+                  {selectedQR.entryTime && (
+                    <p className="text-xs text-emerald-600">
+                      ✓ Parent entered: {new Date(selectedQR.entryTime).toLocaleString()}
+                    </p>
+                  )}
+                  {selectedQR.childOutTime && (
+                    <p className="text-xs text-amber-600">
+                      ✓ Child went out: {new Date(selectedQR.childOutTime).toLocaleString()}
+                    </p>
+                  )}
+                  {selectedQR.childReturnTime && (
+                    <p className="text-xs text-emerald-600">
+                      ✓ Child returned: {new Date(selectedQR.childReturnTime).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              )}
               {selectedQR.isUsed && selectedQR.type === 'leave' && (
                 <p className="text-xs text-amber-600 mt-2">
                   This pass has been used
@@ -861,7 +952,11 @@ const ParentDashboard = () => {
                   </>
                 )}
                 {selectedQR.type === 'leave' && (
-                  <li>This pass is valid for the leave duration</li>
+                  <>
+                    <li>Parent Entry QR is scanned when parent enters Gurukul</li>
+                    <li>Child Exit QR appears after staff approves child outgoing</li>
+                    <li>Return QR is used when the child comes back to Gurukul</li>
+                  </>
                 )}
               </ul>
             </div>
