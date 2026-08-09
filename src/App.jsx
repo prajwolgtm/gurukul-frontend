@@ -78,7 +78,7 @@ function App() {
                 <Route path="my-attendance" element={<SelfAttendance />} />
                 <Route path="parent-dashboard" element={<ParentDashboard />} />
                 <Route path="register-staff" element={
-                  <RoleBasedRoute allowedRoles={[ROLES.ADMIN, ROLES.COORDINATOR]}>
+                  <RoleBasedRoute allowedRoles={[ROLES.ADMIN, ROLES.COORDINATOR, ROLES.PRINCIPAL]}>
                     <StaffRegistration />
                   </RoleBasedRoute>
                 } />

@@ -20,7 +20,7 @@ const PasswordReset = () => {
   const [pendingAccounts, setPendingAccounts] = useState([]);
   const [loadingPending, setLoadingPending] = useState(false);
 
-  const canManageAccounts = [ROLES.ADMIN, ROLES.COORDINATOR].includes(user?.role);
+  const canManageAccounts = [ROLES.ADMIN, ROLES.COORDINATOR, ROLES.PRINCIPAL].includes(user?.role);
 
   const handleResetFormChange = (e) => {
     const { name, value } = e.target;

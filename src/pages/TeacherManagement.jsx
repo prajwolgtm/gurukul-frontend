@@ -28,6 +28,7 @@ const TeacherManagement = () => {
     fullName: '',
     email: '',
     phone: '',
+    role: ROLES.TEACHER,
     password: '',
     employeeId: '',
     qualification: '',
@@ -54,15 +55,15 @@ const TeacherManagement = () => {
   const [filters, setFilters] = useState({
     search: '',
     department: '',
-    status: 'active',
+    status: '',
     isVerified: '',
     page: 1,
     limit: 20
   });
 
   // Check permissions
-  const canManage = [ROLES.ADMIN, ROLES.COORDINATOR].includes(user?.role);
-  const canVerify = [ROLES.ADMIN, ROLES.COORDINATOR].includes(user?.role);
+  const canManage = [ROLES.ADMIN, ROLES.COORDINATOR, ROLES.PRINCIPAL].includes(user?.role);
+  const canVerify = canManage;
 
   // Load initial data
   useEffect(() => {
@@ -293,6 +294,7 @@ const TeacherManagement = () => {
       fullName: teacher.user?.fullName || '',
       email: teacher.user?.email || '',
       phone: teacher.user?.phone || '',
+      role: teacher.user?.role || ROLES.TEACHER,
       password: '', // Don't populate password for security
       employeeId: teacher.employeeId || '',
       motherName: teacher.motherName || '',
@@ -390,6 +392,7 @@ const TeacherManagement = () => {
       fullName: '',
       email: '',
       phone: '',
+      role: ROLES.TEACHER,
       password: '',
       employeeId: '',
       motherName: '',
@@ -562,6 +565,7 @@ const TeacherManagement = () => {
                     <thead className="table-dark">
                       <tr>
                         <th>Employee ID</th>
+                        <th>Role</th>
                         <th>Teacher Name</th>
                         <th>Qualification</th>
                         <th>Departments</th>
@@ -575,6 +579,11 @@ const TeacherManagement = () => {
                         <tr key={teacher._id}>
                           <td>
                             <strong>{teacher.employeeId}</strong>
+                          </td>
+                          <td>
+                            <Badge bg={teacher.user?.role === ROLES.TEACHER ? 'secondary' : 'primary'}>
+                              {teacher.user?.role || ROLES.TEACHER}
+                            </Badge>
                           </td>
                           <td>
                             <div>
@@ -786,6 +795,25 @@ const TeacherManagement = () => {
                         onChange={handleFormChange}
                         required
                       />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>System Role *</Form.Label>
+                      <Form.Select
+                        name="role"
+                        value={formData.role || ROLES.TEACHER}
+                        onChange={handleFormChange}
+                        required
+                      >
+                        <option value={ROLES.TEACHER}>Teacher - assigned classes and subjects only</option>
+                        <option value={ROLES.COORDINATOR}>Coordinator - full management access</option>
+                        <option value={ROLES.PRINCIPAL}>Principal - full management access</option>
+                        <option value={ROLES.ADMIN}>Admin - full management access</option>
+                      </Form.Select>
+                      <Form.Text className="text-muted">
+                        Principal, Coordinator, and Admin can manage the full system.
+                      </Form.Text>
                     </Form.Group>
                   </Col>
                   <Col md={6}>

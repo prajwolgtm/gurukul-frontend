@@ -64,6 +64,7 @@ const StaffRegistration = () => {
   };
 
   const roles = [
+    { value: ROLES.ADMIN, label: 'Admin' },
     { value: ROLES.COORDINATOR, label: 'Coordinator' },
     { value: ROLES.PRINCIPAL, label: 'Principal' },
     { value: ROLES.HOD, label: 'HOD' },

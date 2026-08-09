@@ -13,7 +13,7 @@ export const ROLES = {
 export const ACCESS_LEVELS = {
   [ROLES.ADMIN]: 10,
   [ROLES.COORDINATOR]: 10, // Same level as Admin
-  [ROLES.PRINCIPAL]: 9,
+  [ROLES.PRINCIPAL]: 10,
   [ROLES.HOD]: 7,
   [ROLES.TEACHER]: 5,
   [ROLES.SECURITY]: 4,
