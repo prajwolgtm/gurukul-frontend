@@ -33,6 +33,16 @@ export const teachersAPI = {
     return response.data;
   },
 
+  setVerification: async (id, isVerified) => {
+    const response = await api.put(`/teachers/${id}/verification`, { isVerified });
+    return response.data;
+  },
+
+  setStatus: async (id, status) => {
+    const response = await api.put(`/teachers/${id}/status`, { status });
+    return response.data;
+  },
+
   // Update teacher assignments
   updateTeacherAssignments: async (id, assignmentData) => {
     const response = await api.put(`/teachers/${id}/assignments`, assignmentData);
@@ -42,6 +52,11 @@ export const teachersAPI = {
   // Delete teacher
   deleteTeacher: async (id) => {
     const response = await api.delete(`/teachers/${id}`);
+    return response.data;
+  },
+
+  permanentlyDeleteTeacher: async (id) => {
+    const response = await api.delete(`/teachers/${id}?permanent=true`);
     return response.data;
   }
 };

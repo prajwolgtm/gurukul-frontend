@@ -349,17 +349,35 @@ const TeacherManagement = () => {
     setShowAssignmentModal(true);
   };
 
-  const handleVerify = async (teacherId) => {
+  const handleVerificationChange = async (teacherId, isVerified) => {
     try {
       setLoading(true);
-      await teachersAPI.verifyTeacher(teacherId);
-      setMessage({ type: 'success', text: 'Teacher verified successfully!' });
-      loadTeachers();
+      await teachersAPI.setVerification(teacherId, isVerified);
+      setMessage({
+        type: 'success',
+        text: `Teacher marked as ${isVerified ? 'verified' : 'pending'}.`
+      });
+      await loadTeachers();
     } catch (error) {
-      console.error('❌ Error verifying teacher:', error);
       setMessage({
         type: 'danger',
-        text: error.response?.data?.message || 'Error verifying teacher'
+        text: error.response?.data?.message || 'Error changing verification'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStatusChange = async (teacherId, status) => {
+    try {
+      setLoading(true);
+      await teachersAPI.setStatus(teacherId, status);
+      setMessage({ type: 'success', text: `Teacher status changed to ${status}.` });
+      await loadTeachers();
+    } catch (error) {
+      setMessage({
+        type: 'danger',
+        text: error.response?.data?.message || 'Error changing teacher status'
       });
     } finally {
       setLoading(false);
@@ -367,20 +385,46 @@ const TeacherManagement = () => {
   };
 
   const handleDelete = async (teacherId) => {
-    if (!window.confirm('Are you sure you want to delete this teacher?')) {
+    if (!window.confirm('Archive this teacher? Their login will be disabled, but the record will be kept.')) {
       return;
     }
 
     try {
       setLoading(true);
       await teachersAPI.deleteTeacher(teacherId);
-      setMessage({ type: 'success', text: 'Teacher deleted successfully!' });
+      setMessage({ type: 'success', text: 'Teacher archived successfully.' });
       loadTeachers();
     } catch (error) {
       console.error('❌ Error deleting teacher:', error);
       setMessage({
         type: 'danger',
         text: error.response?.data?.message || 'Error deleting teacher'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePermanentDelete = async (teacher) => {
+    const confirmation = window.prompt(
+      `This permanently deletes ${teacher.user?.fullName || 'this teacher'} and their login account. Type ${teacher.employeeId} to confirm.`
+    );
+    if (confirmation !== teacher.employeeId) {
+      if (confirmation !== null) {
+        setMessage({ type: 'warning', text: 'Permanent deletion cancelled: employee ID did not match.' });
+      }
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await teachersAPI.permanentlyDeleteTeacher(teacher._id);
+      setMessage({ type: 'success', text: 'Teacher profile permanently deleted.' });
+      await loadTeachers();
+    } catch (error) {
+      setMessage({
+        type: 'danger',
+        text: error.response?.data?.message || 'Error permanently deleting teacher'
       });
     } finally {
       setLoading(false);
@@ -638,9 +682,25 @@ const TeacherManagement = () => {
                             )}
                           </td>
                           <td>
-                            <Badge bg={teacher.isVerified ? 'success' : 'warning'}>
-                              {teacher.isVerified ? 'Verified' : 'Pending'}
-                            </Badge>
+                            {canVerify ? (
+                              <Form.Select
+                                size="sm"
+                                value={teacher.isVerified ? 'verified' : 'pending'}
+                                onChange={(event) => handleVerificationChange(
+                                  teacher._id,
+                                  event.target.value === 'verified'
+                                )}
+                                disabled={loading}
+                                aria-label={`Verification for ${teacher.user?.fullName || 'teacher'}`}
+                              >
+                                <option value="verified">Verified</option>
+                                <option value="pending">Pending</option>
+                              </Form.Select>
+                            ) : (
+                              <Badge bg={teacher.isVerified ? 'success' : 'warning'}>
+                                {teacher.isVerified ? 'Verified' : 'Pending'}
+                              </Badge>
+                            )}
                             {teacher.verifiedBy && (
                               <small className="d-block text-muted">
                                 by {teacher.verifiedBy.fullName}
@@ -648,16 +708,22 @@ const TeacherManagement = () => {
                             )}
                           </td>
                           <td>
-                            <Badge 
-                              bg={
-                                teacher.status === 'active' ? 'success' :
-                                teacher.status === 'inactive' ? 'danger' :
-                                teacher.status === 'on_leave' ? 'warning' :
-                                'secondary'
-                              }
-                            >
-                              {teacher.status}
-                            </Badge>
+                            {canManage ? (
+                              <Form.Select
+                                size="sm"
+                                value={teacher.status}
+                                onChange={(event) => handleStatusChange(teacher._id, event.target.value)}
+                                disabled={loading}
+                                aria-label={`Status for ${teacher.user?.fullName || 'teacher'}`}
+                              >
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="on_leave">On Leave</option>
+                                <option value="terminated">Terminated</option>
+                              </Form.Select>
+                            ) : (
+                              <Badge>{teacher.status}</Badge>
+                            )}
                           </td>
                           {canManage && (
                             <td>
@@ -678,23 +744,21 @@ const TeacherManagement = () => {
                                 >
                                   Assign
                                 </Button>
-                                {!teacher.isVerified && canVerify && (
-                                  <Button
-                                    variant="outline-success"
-                                    size="sm"
-                                    onClick={() => handleVerify(teacher._id)}
-                                    title="Verify teacher"
-                                  >
-                                    Verify
-                                  </Button>
-                                )}
+                                <Button
+                                  variant="outline-secondary"
+                                  size="sm"
+                                  onClick={() => handleDelete(teacher._id)}
+                                  title="Archive teacher and disable login"
+                                >
+                                  Archive
+                                </Button>
                                 <Button
                                   variant="outline-danger"
                                   size="sm"
-                                  onClick={() => handleDelete(teacher._id)}
-                                  title="Delete teacher"
+                                  onClick={() => handlePermanentDelete(teacher)}
+                                  title="Permanently delete teacher and login"
                                 >
-                                  Delete
+                                  Delete Permanently
                                 </Button>
                               </div>
                             </td>
