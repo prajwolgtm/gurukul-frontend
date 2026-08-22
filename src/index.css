@@ -83,6 +83,21 @@ p {
   letter-spacing: 0;
 }
 
+.app-brand-mark {
+  background: #fff !important;
+  border: 1px solid #ead4df;
+  border-radius: 50% !important;
+  box-shadow: 0 6px 18px rgba(166, 16, 93, 0.16) !important;
+  overflow: hidden;
+}
+
+.app-brand-mark img {
+  display: block;
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
 .app-desktop-nav {
   align-items: center;
   display: flex;
@@ -2500,6 +2515,12 @@ body {
   box-shadow: 0 12px 28px rgba(37, 87, 214, 0.24);
 }
 
+.app-navbar .app-brand-mark {
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 6px 18px rgba(166, 16, 93, 0.16);
+}
+
 .app-brand-copy {
   display: grid;
   gap: 0.05rem;
@@ -3275,17 +3296,26 @@ body {
 
 .login-mark {
   align-items: center;
-  background: linear-gradient(145deg, #2457d6, #0f9f8f);
-  border-radius: 18px;
+  background: #fff;
+  border: 1px solid #ead4df;
+  border-radius: 50%;
   box-shadow: var(--app-shadow-lg);
   color: #fff;
   display: flex;
   font-size: 1.6rem;
   font-weight: 900;
-  height: 68px;
+  height: 112px;
   justify-content: center;
   margin-bottom: 1.5rem;
-  width: 68px;
+  overflow: hidden;
+  width: 112px;
+}
+
+.login-mark img {
+  display: block;
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
 }
 
 .login-hero-copy h1 {

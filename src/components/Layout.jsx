@@ -23,7 +23,7 @@ const Layout = ({ children }) => {
             <div className="app-brand-wrap">
               <Link to={user?.role === ROLES.PARENT ? '/parent-dashboard' : user?.role === ROLES.SECURITY ? '/security-scanner' : '/'} className="app-brand">
                 <div className="app-brand-mark">
-                  <span>G</span>
+                  <img src="/logo192.png" alt="Gurukul logo" />
                 </div>
                 <div className="app-brand-copy">
                   <span className="app-brand-name">Gurukul</span>

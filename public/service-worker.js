@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gurukul-shell-v1';
+const CACHE_NAME = 'gurukul-shell-v2';
 const APP_SHELL = ['/', '/offline.html', '/manifest.json', '/logo192.png', '/logo512.png'];
 
 self.addEventListener('install', (event) => {

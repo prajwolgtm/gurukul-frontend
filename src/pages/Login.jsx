@@ -41,7 +41,7 @@ const Login = () => {
       <div className="login-shell">
         <section className="login-hero-copy">
           <div className="login-mark">
-            <span>G</span>
+            <img src="/logo512.png" alt="Gurukul logo" />
           </div>
           <h1>Gurukul</h1>
           <p>Modern school operations for students, teachers, classes, exams, attendance, and parent requests.</p>
