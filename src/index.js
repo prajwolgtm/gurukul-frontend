@@ -4,6 +4,16 @@ import './index.css';
 import App from './App.jsx';
 import reportWebVitals from './reportWebVitals';
 
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  window.gurukulInstallPrompt = event;
+  window.dispatchEvent(new Event('gurukulinstallready'));
+});
+
+window.addEventListener('appinstalled', () => {
+  window.gurukulInstallPrompt = null;
+});
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
@@ -15,3 +25,11 @@ root.render(
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
+
+if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js').catch((error) => {
+      console.error('Service worker registration failed:', error);
+    });
+  });
+}

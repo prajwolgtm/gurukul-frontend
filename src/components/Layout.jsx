@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/auth';
 import { ROLES } from '../utils/roles';
 import RoleBasedNav from './RoleBasedNav';
+import InstallAppButton from './InstallAppButton';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -32,6 +33,7 @@ const Layout = ({ children }) => {
             </div>
 
             <div className="app-user-area">
+              <InstallAppButton />
               <div className="app-user-summary">
                 <div className="app-user-avatar">
                   {(user?.personalInfo?.fullName || user?.fullName || user?.email || '?')[0].toUpperCase()}
@@ -77,6 +79,7 @@ const Layout = ({ children }) => {
               <RoleBasedNav mobile onItemClick={() => setMobileMenuOpen(false)} />
             </div>
             <div className="app-mobile-user">
+              <InstallAppButton mobile />
               <div className="app-mobile-user-row">
                 <div className="app-user-avatar app-user-avatar-lg">
                   {(user?.personalInfo?.fullName || user?.fullName || user?.email || '?')[0].toUpperCase()}

@@ -4778,3 +4778,58 @@ span.bg-light {
   font-weight: 800;
   line-height: 1.25;
 }
+
+.install-app-wrap {
+  position: relative;
+}
+
+.install-app-button {
+  align-items: center;
+  background: #123c35;
+  border: 1px solid #123c35;
+  border-radius: 8px;
+  color: #fff;
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 800;
+  gap: 0.45rem;
+  min-height: 38px;
+  padding: 0.5rem 0.8rem;
+  white-space: nowrap;
+}
+
+.install-app-button:hover {
+  background: #0c2d28;
+}
+
+.install-ios-help {
+  background: #fff;
+  border: 1px solid #dbe4e0;
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(15, 35, 30, 0.16);
+  color: #33433e;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.7rem;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 210px;
+  z-index: 1100;
+}
+
+.install-app-wrap-mobile {
+  margin-bottom: 0.85rem;
+  width: 100%;
+}
+
+.install-app-wrap-mobile .install-app-button {
+  justify-content: center;
+  width: 100%;
+}
+
+.install-app-wrap-mobile .install-ios-help {
+  position: static;
+  margin-top: 0.5rem;
+  width: 100%;
+}
