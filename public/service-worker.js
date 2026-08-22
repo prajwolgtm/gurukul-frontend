@@ -1,5 +1,14 @@
-const CACHE_NAME = 'gurukul-shell-v2';
-const APP_SHELL = ['/', '/offline.html', '/manifest.json', '/logo192.png', '/logo512.png'];
+const CACHE_NAME = 'gurukul-shell-v3';
+const APP_SHELL = [
+  '/',
+  '/offline.html',
+  '/manifest.json',
+  '/logo192.png',
+  '/logo512.png',
+  '/maskable-logo192.png',
+  '/maskable-logo512.png',
+  '/apple-touch-icon.png'
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
