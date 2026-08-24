@@ -41,7 +41,7 @@ const Login = () => {
       <div className="login-shell">
         <section className="login-hero-copy">
           <div className="login-mark">
-            <img src="/logo512.png" alt="Gurukul logo" />
+            <img src="/gurukul-official-logo.png?v=2" alt="Ved Vignan Maha Vidya Peeth, Veda Department" />
           </div>
           <h1>Gurukul</h1>
           <p>Modern school operations for students, teachers, classes, exams, attendance, and parent requests.</p>

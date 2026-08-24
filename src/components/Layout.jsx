@@ -23,7 +23,7 @@ const Layout = ({ children }) => {
             <div className="app-brand-wrap">
               <Link to={user?.role === ROLES.PARENT ? '/parent-dashboard' : user?.role === ROLES.SECURITY ? '/security-scanner' : '/'} className="app-brand">
                 <div className="app-brand-mark">
-                  <img src="/logo192.png" alt="Gurukul logo" />
+                  <img src="/gurukul-official-logo.png?v=2" alt="Ved Vignan Maha Vidya Peeth, Veda Department" />
                 </div>
                 <div className="app-brand-copy">
                   <span className="app-brand-name">Gurukul</span>

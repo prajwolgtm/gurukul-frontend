@@ -1,8 +1,9 @@
-const CACHE_NAME = 'gurukul-shell-v4';
+const CACHE_NAME = 'gurukul-shell-v5-official-logo';
 const APP_SHELL = [
   '/',
   '/offline.html',
   '/manifest.json',
+  '/gurukul-official-logo.png?v=2',
   '/logo192.png',
   '/logo512.png',
   '/maskable-logo192.png',
