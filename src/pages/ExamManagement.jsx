@@ -77,7 +77,7 @@ const ExamManagement = () => {
   const [showMarksEntryModal, setShowMarksEntryModal] = useState(false);
   const [editingExam, setEditingExam] = useState(null);
   const [selectedExam, setSelectedExam] = useState(null);
-  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [selectedStudent] = useState(null);
   const [examMarks, setExamMarks] = useState([]);
   const [selectedSubjectForEntry, setSelectedSubjectForEntry] = useState('');
   const [subjectMarksGrid, setSubjectMarksGrid] = useState({});
@@ -386,14 +386,23 @@ const ExamManagement = () => {
       return;
     }
 
+    const subjectConfig = selectedExam?.subjects?.find(item => getSubjectId(item)?.toString() === subjectId.toString());
+    const divisions = subjectConfig?.divisions || [];
     const nextGrid = {};
     studentsList.forEach(student => {
       const existingMark = marksList.find(mark => mark.student?._id === student._id || mark.student === student._id);
       const existingSubjectMark = existingMark?.subjectMarks?.find(mark => (mark.subject?._id || mark.subject)?.toString() === subjectId.toString());
       nextGrid[student._id] = {
         marksObtained: existingSubjectMark?.marksObtained ?? '',
-        remarks: existingSubjectMark?.remarks || '',
-        isPresent: existingMark?.isPresent !== false
+        divisionMarks: divisions.map((division, index) => ({
+          divisionName: division.name || `Division ${index + 1}`,
+          marksObtained: existingSubjectMark?.divisionMarks?.[index]?.marksObtained ?? '',
+          maxMarks: division.maxMarks || 10
+        })),
+        internalRemarks: existingSubjectMark?.internalRemarks || existingSubjectMark?.remarks || '',
+        teacherRemarks: existingSubjectMark?.teacherRemarks || '',
+        absentReason: existingSubjectMark?.absentReason || '',
+        isPresent: existingSubjectMark?.isPresent ?? existingMark?.isPresent ?? true
       };
     });
     setSubjectMarksGrid(nextGrid);
@@ -1072,10 +1081,19 @@ const ExamManagement = () => {
     setSubjectMarksGrid(prev => ({
       ...prev,
       [studentId]: {
-        ...(prev[studentId] || { marksObtained: '', remarks: '', isPresent: true }),
+        ...(prev[studentId] || { marksObtained: '', divisionMarks: [], internalRemarks: '', teacherRemarks: '', absentReason: '', isPresent: true }),
         [field]: field === 'isPresent' ? value === true || value === 'true' : value
       }
     }));
+  };
+
+  const handleDivisionGridChange = (studentId, divisionIndex, value) => {
+    setSubjectMarksGrid(prev => {
+      const row = prev[studentId] || { divisionMarks: [], isPresent: true };
+      const divisionMarks = [...(row.divisionMarks || [])];
+      divisionMarks[divisionIndex] = { ...divisionMarks[divisionIndex], marksObtained: value };
+      return { ...prev, [studentId]: { ...row, divisionMarks } };
+    });
   };
 
   const handleSaveSubjectMarks = async () => {
@@ -1084,13 +1102,24 @@ const ExamManagement = () => {
     try {
       setSavingSubjectMarks(true);
       const marksRows = eligibleStudents
-        .map(student => ({
-          student: student._id,
-          marksObtained: subjectMarksGrid[student._id]?.marksObtained,
-          remarks: subjectMarksGrid[student._id]?.remarks,
-          isPresent: subjectMarksGrid[student._id]?.isPresent !== false
-        }))
-        .filter(row => row.marksObtained !== '' && row.marksObtained !== null && row.marksObtained !== undefined);
+        .map(student => {
+          const row = subjectMarksGrid[student._id] || {};
+          const marksObtained = selectedSubjectConfig?.useDivisions
+            ? (row.divisionMarks || []).reduce((sum, mark) => sum + Number(mark.marksObtained || 0), 0)
+            : row.marksObtained;
+          return {
+            student: student._id,
+            marksObtained,
+            divisionMarks: row.divisionMarks,
+            internalRemarks: row.internalRemarks,
+            teacherRemarks: row.teacherRemarks,
+            absentReason: row.absentReason,
+            isPresent: row.isPresent !== false
+          };
+        })
+        .filter(row => row.isPresent === false || (selectedSubjectConfig?.useDivisions
+          ? row.divisionMarks?.some(mark => mark.marksObtained !== '' && mark.marksObtained !== null && mark.marksObtained !== undefined)
+          : row.marksObtained !== '' && row.marksObtained !== null && row.marksObtained !== undefined));
 
       if (marksRows.length === 0) {
         setMessage({ type: 'warning', text: 'Enter marks for at least one student before saving.' });
@@ -1109,61 +1138,6 @@ const ExamManagement = () => {
     } finally {
       setSavingSubjectMarks(false);
     }
-  };
-
-  const handleEnterMarks = (student) => {
-    setSelectedStudent(student);
-    
-    // Check if marks already exist for this student
-    const existingMarks = examMarks.find(m => m.student._id === student._id);
-    
-    if (existingMarks) {
-      // Pre-fill form with existing marks
-      setMarksFormData({
-        isPresent: existingMarks.isPresent !== false,
-        absentReason: existingMarks.absentReason || '',
-        subjectMarks: existingMarks.subjectMarks.map(sm => {
-          const examSubject = selectedExam?.subjects?.find(s => 
-            (s.subject._id || s.subject).toString() === (sm.subject._id || sm.subject).toString()
-          );
-          const useDivisions = examSubject?.useDivisions || false;
-          
-          return {
-            subject: sm.subject._id || sm.subject,
-            marksObtained: sm.marksObtained,
-            maxMarks: sm.maxMarks,
-            useDivisions,
-            divisionMarks: useDivisions && sm.divisionMarks && sm.divisionMarks.length > 0
-              ? sm.divisionMarks
-              : useDivisions ? initializeDivisionMarks() : []
-          };
-        }),
-        remarks: existingMarks.remarks || '',
-        teacherRemarks: existingMarks.teacherRemarks || ''
-      });
-    } else {
-      // Initialize with exam subjects
-      const initialSubjectMarks = selectedExam?.subjects?.map(subj => {
-        const useDivisions = subj.useDivisions || false;
-        return {
-          subject: subj.subject._id || subj.subject,
-          marksObtained: 0,
-          maxMarks: subj.maxMarks || 100,
-          useDivisions,
-          divisionMarks: useDivisions ? initializeDivisionMarks() : []
-        };
-      }) || [];
-      
-      setMarksFormData({
-        isPresent: true,
-        absentReason: '',
-        subjectMarks: initialSubjectMarks,
-        remarks: '',
-        teacherRemarks: ''
-      });
-    }
-    
-    setShowMarksEntryModal(true);
   };
 
   const handleMarksFormChange = (e) => {
@@ -2938,7 +2912,7 @@ const ExamManagement = () => {
               </Row>
             </Tab>
 
-            <Tab eventKey="subject-entry" title="Subject Entry">
+            <Tab eventKey="subject-entry" title="Marks Entry">
               <Card className="marks-entry-panel">
                 <Card.Body>
                   <Row className="g-3 align-items-end mb-3">
@@ -2988,10 +2962,15 @@ const ExamManagement = () => {
                         <tr>
                           <th>Admission</th>
                           <th>Student</th>
-                          <th>Veda / Shakha</th>
-                          <th style={{ width: '150px' }}>Marks</th>
-                          <th style={{ width: '130px' }}>Present</th>
-                          <th>Remarks</th>
+                          <th>Status</th>
+                          {selectedSubjectConfig?.useDivisions ? (
+                            selectedSubjectConfig.divisions?.map((division, index) => (
+                              <th key={division.name || index} className="division-mark-heading">D{index + 1}<small>/{division.maxMarks || 10}</small></th>
+                            ))
+                          ) : <th style={{ width: '130px' }}>Marks <small>/{selectedSubjectMaxMarks}</small></th>}
+                          <th>Total</th>
+                          <th>Teacher Remarks</th>
+                          <th>Internal Remarks</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -3003,40 +2982,27 @@ const ExamManagement = () => {
                               {student.currentStandard && <small className="d-block text-muted">{student.currentStandard}</small>}
                             </td>
                             <td>
-                              <Badge bg="primary" className="me-1">{student.department?.name || 'N/A'}</Badge>
-                              {student.subDepartments?.slice(0, 1).map(sd => (
-                                <Badge key={sd._id} bg="secondary">{sd.name}</Badge>
-                              ))}
+                              <Form.Select
+                                size="sm"
+                                value={subjectMarksGrid[student._id]?.isPresent === false ? 'absent' : 'present'}
+                                disabled={!canEditSelectedSubject}
+                                onChange={(e) => handleSubjectGridChange(student._id, 'isPresent', e.target.value === 'present')}
+                              ><option value="present">Present</option><option value="absent">Absent</option></Form.Select>
+                              {subjectMarksGrid[student._id]?.isPresent === false && <Form.Control size="sm" className="mt-1" value={subjectMarksGrid[student._id]?.absentReason || ''} disabled={!canEditSelectedSubject} onChange={(e) => handleSubjectGridChange(student._id, 'absentReason', e.target.value)} placeholder="Reason" />}
                             </td>
-                            <td>
+                            {selectedSubjectConfig?.useDivisions ? selectedSubjectConfig.divisions?.map((division, index) => (
+                              <td key={division.name || index} className="division-mark-cell"><Form.Control type="number" min="0" max={division.maxMarks || 10} value={subjectMarksGrid[student._id]?.divisionMarks?.[index]?.marksObtained ?? ''} disabled={!canEditSelectedSubject || subjectMarksGrid[student._id]?.isPresent === false} onChange={(e) => handleDivisionGridChange(student._id, index, e.target.value)} /></td>
+                            )) : <td><Form.Control type="number" min="0" max={selectedSubjectMaxMarks} value={subjectMarksGrid[student._id]?.marksObtained ?? ''} disabled={!canEditSelectedSubject || subjectMarksGrid[student._id]?.isPresent === false} onChange={(e) => handleSubjectGridChange(student._id, 'marksObtained', e.target.value)} placeholder={`/${selectedSubjectMaxMarks}`} /></td>}
+                            <td><strong>{subjectMarksGrid[student._id]?.isPresent === false ? 'Absent' : selectedSubjectConfig?.useDivisions ? (subjectMarksGrid[student._id]?.divisionMarks || []).reduce((sum, mark) => sum + Number(mark.marksObtained || 0), 0) : subjectMarksGrid[student._id]?.marksObtained || '-'}</strong></td>
+                            <td className="remarks-cell">
                               <Form.Control
-                                type="number"
-                                min="0"
-                                max={selectedSubjectMaxMarks}
-                                value={subjectMarksGrid[student._id]?.marksObtained ?? ''}
+                                value={subjectMarksGrid[student._id]?.teacherRemarks || ''}
                                 disabled={!canEditSelectedSubject}
-                                onChange={(e) => handleSubjectGridChange(student._id, 'marksObtained', e.target.value)}
-                                placeholder={`/${selectedSubjectMaxMarks}`}
-                              />
-                            </td>
-                            <td>
-                              <Form.Check
-                                type="switch"
-                                label={subjectMarksGrid[student._id]?.isPresent === false ? 'Absent' : 'Present'}
-                                checked={subjectMarksGrid[student._id]?.isPresent !== false}
-                                disabled={!canEditSelectedSubject}
-                                onChange={(e) => handleSubjectGridChange(student._id, 'isPresent', e.target.checked)}
-                                className="presence-switch"
-                              />
-                            </td>
-                            <td>
-                              <Form.Control
-                                value={subjectMarksGrid[student._id]?.remarks || ''}
-                                disabled={!canEditSelectedSubject}
-                                onChange={(e) => handleSubjectGridChange(student._id, 'remarks', e.target.value)}
+                                onChange={(e) => handleSubjectGridChange(student._id, 'teacherRemarks', e.target.value)}
                                 placeholder="Optional"
                               />
                             </td>
+                            <td className="remarks-cell"><Form.Control value={subjectMarksGrid[student._id]?.internalRemarks || ''} disabled={!canEditSelectedSubject} onChange={(e) => handleSubjectGridChange(student._id, 'internalRemarks', e.target.value)} placeholder="Office only" /></td>
                           </tr>
                         ))}
                       </tbody>
@@ -3046,111 +3012,6 @@ const ExamManagement = () => {
               </Card>
             </Tab>
 
-            <Tab eventKey="students" title={`Students (${eligibleStudents.length})`}>
-              <div className="table-responsive">
-                <Table striped hover size="sm">
-                  <thead>
-                    <tr>
-                      <th>Admission No</th>
-                      <th>Student Name</th>
-                      <th>Department</th>
-                      <th>Batches</th>
-                      <th>Marks Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {eligibleStudents.map(student => {
-                      const hasMarks = examMarks.some(mark => mark.student._id === student._id);
-                      return (
-                        <tr key={student._id}>
-                          <td>{student.admissionNo}</td>
-                          <td>{student.fullName}</td>
-                          <td>
-                            <Badge bg="primary">
-                              {student.department?.name}
-                            </Badge>
-                          </td>
-                          <td>
-                            {student.batches?.map(batch => (
-                              <Badge key={batch._id} bg="success" className="me-1">
-                                {batch.name}
-                              </Badge>
-                            ))}
-                          </td>
-                          <td>
-                            <Badge bg={hasMarks ? 'success' : 'warning'} className="me-2">
-                              {hasMarks ? 'Entered' : 'Pending'}
-                            </Badge>
-                            <Button
-                              variant={hasMarks ? 'outline-primary' : 'primary'}
-                              size="sm"
-                              onClick={() => handleEnterMarks(student)}
-                            >
-                              {hasMarks ? 'Edit' : 'Enter'}
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </Table>
-              </div>
-            </Tab>
-            <Tab eventKey="marks" title={`Entered Marks (${examMarks.length})`}>
-              <div className="table-responsive">
-                <Table striped hover size="sm">
-                  <thead>
-                    <tr>
-                      <th>Student</th>
-                      <th>Total Marks</th>
-                      <th>Percentage</th>
-                      <th>Grade</th>
-                      <th>Status</th>
-                      <th>Entered By</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {examMarks.map(mark => (
-                      <tr key={mark._id}>
-                        <td>
-                          <div>
-                            <strong>{mark.student.fullName}</strong>
-                            <br />
-                            <small className="text-muted">{mark.student.admissionNo}</small>
-                          </div>
-                        </td>
-                        <td>
-                          {mark.totalMarksObtained}/{mark.totalMaxMarks}
-                        </td>
-                        <td>
-                          <Badge bg={mark.overallPercentage >= 40 ? 'success' : 'danger'}>
-                            {mark.overallPercentage?.toFixed(1)}%
-                          </Badge>
-                        </td>
-                        <td>
-                          <Badge bg="info">{mark.overallGrade}</Badge>
-                        </td>
-                        <td>
-                          <Badge 
-                            bg={
-                              mark.status === 'draft' ? 'secondary' :
-                              mark.status === 'submitted' ? 'primary' :
-                              mark.status === 'verified' ? 'success' :
-                              'info'
-                            }
-                          >
-                            {mark.status}
-                          </Badge>
-                        </td>
-                        <td>
-                          <small>{mark.enteredBy?.fullName}</small>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </div>
-            </Tab>
           </Tabs>
         </Modal.Body>
         <Modal.Footer>

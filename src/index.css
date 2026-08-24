@@ -3232,6 +3232,33 @@ body {
   padding-top: 0.45rem;
 }
 
+.marks-grid-table table {
+  min-width: 980px;
+}
+
+.division-mark-heading,
+.division-mark-cell {
+  min-width: 72px;
+  text-align: center;
+}
+
+.division-mark-heading small {
+  display: block;
+  color: var(--app-muted);
+  font-size: 0.68rem;
+}
+
+.division-mark-cell .form-control {
+  min-width: 60px;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+  text-align: center;
+}
+
+.remarks-cell {
+  min-width: 180px;
+}
+
 .marks-rank-list {
   display: grid;
   gap: 0.6rem;
