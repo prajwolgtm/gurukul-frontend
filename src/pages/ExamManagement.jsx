@@ -260,9 +260,9 @@ const ExamManagement = () => {
 
   const toggleSubject = (subjectId) => {
     setExamFormData(prev => {
-      const exists = prev.subjects.some(item => item.subject === subjectId);
+      const exists = prev.subjects.some(item => getSubjectId(item)?.toString() === subjectId.toString());
       const nextSubjects = exists
-        ? prev.subjects.filter(item => item.subject !== subjectId)
+        ? prev.subjects.filter(item => getSubjectId(item)?.toString() !== subjectId.toString())
         : [
             ...prev.subjects,
             {
@@ -289,7 +289,7 @@ const ExamManagement = () => {
   const updateSubjectConfig = (subjectId, changes) => {
     setExamFormData(prev => ({
       ...prev,
-      subjects: prev.subjects.map(item => item.subject === subjectId ? { ...item, ...changes } : item)
+      subjects: prev.subjects.map(item => getSubjectId(item)?.toString() === subjectId.toString() ? { ...item, ...changes } : item)
     }));
   };
 
@@ -297,8 +297,8 @@ const ExamManagement = () => {
     setExamFormData(prev => ({
       ...prev,
       subjects: prev.subjects.map(item => {
-        if (item.subject !== subjectId) return item;
-        const access = (item.teacherAccess || []).filter(link => (link.teacher?._id || link.teacher) !== teacher);
+        if (getSubjectId(item)?.toString() !== subjectId.toString()) return item;
+        const access = (item.teacherAccess || []).filter(link => (link.teacher?._id || link.teacher)?.toString() !== teacher.toString());
         return { ...item, teacherAccess: permission ? [...access, { teacher, permission }] : access };
       })
     }));
@@ -1005,7 +1005,14 @@ const ExamManagement = () => {
       targetDepartmentStandard: exam.targetDepartmentStandard || '',
       customStudents: exam.customStudents?.map(s => s._id) || [],
       accessTeachers: exam.invigilators?.map(t => t._id || t) || [],
-      subjects: exam.subjects || [],
+      subjects: (exam.subjects || []).map(subjectConfig => ({
+        ...subjectConfig,
+        subject: getSubjectId(subjectConfig)?.toString(),
+        teacherAccess: (subjectConfig.teacherAccess || []).map(link => ({
+          teacher: (link.teacher?._id || link.teacher)?.toString(),
+          permission: link.permission || 'edit'
+        }))
+      })),
       instructions: exam.instructions || '',
       venue: exam.venue || '',
       remarks: exam.remarks || '',
@@ -2493,7 +2500,7 @@ const ExamManagement = () => {
                         <div className="option-empty-state">No subjects available. Add subjects first.</div>
                       ) : (
                         subjects.map(subject => {
-                          const selected = examFormData.subjects.some(item => item.subject === subject._id);
+                          const selected = examFormData.subjects.some(item => getSubjectId(item)?.toString() === subject._id.toString());
                           return (
                             <button
                               type="button"
@@ -2516,17 +2523,18 @@ const ExamManagement = () => {
 	                      <h6>Selected Subjects</h6>
                       <ListGroup>
                         {examFormData.subjects.map((subj, index) => {
-                          const subject = subjects.find(s => s._id === subj.subject);
+                          const subjectId = getSubjectId(subj)?.toString();
+                          const subject = subjects.find(s => s._id.toString() === subjectId);
                           return (
                             <ListGroup.Item key={index} className="exam-subject-item exam-subject-config">
                               <div className="exam-subject-config-main">
                                 <strong>{subject?.name}</strong> ({subject?.code})
                                 <div className="exam-subject-number-grid">
-                                  <Form.Group><Form.Label>Full marks</Form.Label><Form.Control type="number" min="1" value={subj.maxMarks} onChange={e => updateSubjectConfig(subj.subject, { maxMarks: Number(e.target.value) })} /></Form.Group>
-                                  <Form.Group><Form.Label>Pass marks</Form.Label><Form.Control type="number" min="0" max={subj.maxMarks} value={subj.passingMarks} onChange={e => updateSubjectConfig(subj.subject, { passingMarks: Number(e.target.value) })} /></Form.Group>
+                                  <Form.Group><Form.Label>Full marks</Form.Label><Form.Control type="number" min="1" value={subj.maxMarks} onChange={e => updateSubjectConfig(subjectId, { maxMarks: Number(e.target.value) })} /></Form.Group>
+                                  <Form.Group><Form.Label>Pass marks</Form.Label><Form.Control type="number" min="0" max={subj.maxMarks} value={subj.passingMarks} onChange={e => updateSubjectConfig(subjectId, { passingMarks: Number(e.target.value) })} /></Form.Group>
                                 </div>
                                 <label className={`exam-toggle-card compact ${subj.useDivisions ? 'is-selected' : ''}`}>
-                                  <Form.Check type="switch" checked={Boolean(subj.useDivisions)} onChange={e => updateSubjectConfig(subj.subject, {
+                                  <Form.Check type="switch" checked={Boolean(subj.useDivisions)} onChange={e => updateSubjectConfig(subjectId, {
                                     useDivisions: e.target.checked,
                                     maxMarks: e.target.checked ? 100 : subj.maxMarks,
                                     divisions: e.target.checked ? Array.from({ length: 10 }, (_, i) => ({ name: `Division ${i + 1}`, maxMarks: 10, order: i + 1 })) : []
@@ -2538,8 +2546,8 @@ const ExamManagement = () => {
                                   <p>Choose Edit marks, View only, or No access for this subject.</p>
                                   <div className="subject-access-grid">{teachers.map(teacher => {
                                     const id = getTeacherUserId(teacher);
-                                    const assigned = subj.teacherAccess?.find(link => (link.teacher?._id || link.teacher) === id)?.permission || '';
-                                    return <label key={id}><span>{getTeacherName(teacher)}</span><Form.Select size="sm" value={assigned} onChange={e => setSubjectTeacherPermission(subj.subject, id, e.target.value)}><option value="">No access</option><option value="view">View only</option><option value="edit">Edit marks</option></Form.Select></label>;
+                                    const assigned = subj.teacherAccess?.find(link => (link.teacher?._id || link.teacher)?.toString() === id?.toString())?.permission || '';
+                                    return <label key={id}><span>{getTeacherName(teacher)}</span><Form.Select size="sm" value={assigned} onChange={e => setSubjectTeacherPermission(subjectId, id, e.target.value)}><option value="">No access</option><option value="view">View only</option><option value="edit">Edit marks</option></Form.Select></label>;
                                   })}</div>
                                 </details>
                               </div>
