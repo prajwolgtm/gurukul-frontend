@@ -28,6 +28,17 @@ const STANDARD_OPTIONS = [
   'M.A. 2nd Year'
 ];
 
+const EXAM_TYPE_OPTIONS = [
+  { value: 'unit', label: 'Unit / Class Test' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'half_yearly', label: 'Half Yearly' },
+  { value: 'annual', label: 'Annual' },
+  { value: 'final', label: 'Final' },
+  { value: 'assignment', label: 'Assignment' },
+  { value: 'project', label: 'Project' },
+  { value: 'practical', label: 'Practical' }
+];
+
 const ExamManagement = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -139,7 +150,10 @@ const ExamManagement = () => {
   const canDelete = [ROLES.ADMIN, ROLES.COORDINATOR].includes(user?.role);
 
   const getExamTypeLabel = (type) => ({
-    unit: 'Unit Test',
+    unit: 'Unit / Class Test',
+    quarterly: 'Quarterly',
+    half_yearly: 'Half Yearly',
+    annual: 'Annual',
     midterm: 'Mid-term',
     final: 'Final',
     assignment: 'Assignment',
@@ -219,13 +233,6 @@ const ExamManagement = () => {
     subjects.find(subject => subject._id === getSubjectId(subjectConfig))?.name ||
     'Subject'
   );
-
-  const getSubjectCategoryLabel = (category) => ({
-    theory: 'Theory',
-    practical: 'Practical',
-    oral: 'Oral',
-    project: 'Project'
-  }[category] || category || 'Subject');
 
   const toggleArrayValue = (field, value) => {
     setExamFormData(prev => {
@@ -1473,12 +1480,7 @@ const ExamManagement = () => {
                       onChange={handleFilterChange}
                     >
                       <option value="">All Types</option>
-                      <option value="unit">Unit Test</option>
-                      <option value="midterm">Mid-term</option>
-                      <option value="final">Final</option>
-                      <option value="assignment">Assignment</option>
-                      <option value="project">Project</option>
-                      <option value="practical">Practical</option>
+                      {EXAM_TYPE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </Form.Select>
                   </Form.Group>
                 </Col>
@@ -1862,12 +1864,7 @@ const ExamManagement = () => {
                         onChange={handleExamFormChange}
                         required
                       >
-                        <option value="unit">Unit Test</option>
-                        <option value="midterm">Mid-term</option>
-                        <option value="final">Final</option>
-                        <option value="assignment">Assignment</option>
-                        <option value="project">Project</option>
-                        <option value="practical">Practical</option>
+                        {EXAM_TYPE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                       </Form.Select>
                     </Form.Group>
                   </Col>

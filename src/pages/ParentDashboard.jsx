@@ -371,10 +371,14 @@ const ParentDashboard = () => {
                         className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-100 text-base bg-white"
                       >
                         <option value="">All Exam Types</option>
-                        <option value="unit">Unit Test</option>
-                        <option value="midterm">Midterm</option>
+                        <option value="unit">Unit / Class Test</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="half_yearly">Half Yearly</option>
+                        <option value="annual">Annual</option>
                         <option value="final">Final</option>
                         <option value="assignment">Assignment</option>
+                        <option value="project">Project</option>
+                        <option value="practical">Practical</option>
                       </select>
                     </div>
                   </div>
