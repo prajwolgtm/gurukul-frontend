@@ -29,6 +29,7 @@ const StudentManagement = lazy(() => import('./pages/StudentManagement'));
 const StudentProfile = lazy(() => import('./pages/StudentProfile'));
 const TeacherManagement = lazy(() => import('./pages/TeacherManagement'));
 const ExamManagement = lazy(() => import('./pages/ExamManagement'));
+const SubjectManagement = lazy(() => import('./pages/SubjectManagement'));
 const SelfAttendance = lazy(() => import('./pages/SelfAttendance'));
 const ParentDashboard = lazy(() => import('./pages/ParentDashboard'));
 const PasswordReset = lazy(() => import('./pages/PasswordReset'));
@@ -75,6 +76,7 @@ function App() {
                 <Route path="students/:studentId/profile" element={<StudentProfile />} />
                 <Route path="teachers" element={<TeacherManagement />} />
                 <Route path="exams" element={<ExamManagement />} />
+                <Route path="subjects" element={<SubjectManagement />} />
                 <Route path="my-attendance" element={<SelfAttendance />} />
                 <Route path="parent-dashboard" element={<ParentDashboard />} />
                 <Route path="register-staff" element={

@@ -263,14 +263,12 @@ const ExamManagement = () => {
               maxMarks: 100,
               passingMarks: 40,
               weightage: 1,
-              useDivisions: prev.useDivisions || false,
-              divisions: prev.useDivisions
-                ? Array.from({ length: 10 }, (_, i) => ({
-                    name: `Division ${i + 1}`,
-                    maxMarks: 10,
-                    order: i + 1
-                  }))
-                : []
+              useDivisions: false,
+              divisions: [],
+              teacherAccess: (subjects.find(subject => subject._id === subjectId)?.teachers || []).map(link => ({
+                teacher: link.teacher?._id || link.teacher,
+                permission: 'edit'
+              }))
             }
           ];
 
@@ -279,6 +277,24 @@ const ExamManagement = () => {
         subjects: nextSubjects
       };
     });
+  };
+
+  const updateSubjectConfig = (subjectId, changes) => {
+    setExamFormData(prev => ({
+      ...prev,
+      subjects: prev.subjects.map(item => item.subject === subjectId ? { ...item, ...changes } : item)
+    }));
+  };
+
+  const setSubjectTeacherPermission = (subjectId, teacher, permission) => {
+    setExamFormData(prev => ({
+      ...prev,
+      subjects: prev.subjects.map(item => {
+        if (item.subject !== subjectId) return item;
+        const access = (item.teacherAccess || []).filter(link => (link.teacher?._id || link.teacher) !== teacher);
+        return { ...item, teacherAccess: permission ? [...access, { teacher, permission }] : access };
+      })
+    }));
   };
 
   const OptionTileGrid = ({
@@ -649,6 +665,12 @@ const ExamManagement = () => {
     try {
       const response = await examMarksAPI.getExamMarks(examId);
       setExamMarks(response.examMarks || []);
+      if (response.exam?.subjects) {
+        setSelectedExam(current => current ? { ...current, subjects: response.exam.subjects } : current);
+        setSelectedSubjectForEntry(current => response.exam.subjects.some(item => getSubjectId(item)?.toString() === current?.toString())
+          ? current
+          : getSubjectId(response.exam.subjects[0]) || '');
+      }
     } catch (error) {
       console.error('❌ Error loading exam marks:', error);
       setExamMarks([]);
@@ -1311,6 +1333,10 @@ const ExamManagement = () => {
 
   const resultSummary = getResultSummary();
   const selectedSubjectConfig = selectedExam?.subjects?.find(subjectConfig => getSubjectId(subjectConfig)?.toString() === selectedSubjectForEntry?.toString());
+  const selectedSubjectPermission = selectedSubjectConfig?.teacherAccess?.find(link =>
+    (link.teacher?._id || link.teacher)?.toString() === (user?._id || user?.id)?.toString()
+  )?.permission;
+  const canEditSelectedSubject = [ROLES.ADMIN, ROLES.COORDINATOR, ROLES.PRINCIPAL].includes(user?.role) || selectedSubjectPermission === 'edit';
   const selectedSubjectMaxMarks = selectedSubjectConfig?.maxMarks || 100;
   const filteredEligibleStudents = eligibleStudents.filter(student => {
     const searchText = marksSearch.trim().toLowerCase();
@@ -1339,34 +1365,22 @@ const ExamManagement = () => {
               {canManage && (
                 <Button 
                   variant="outline-info" 
-                  onClick={async () => {
-                    setShowSubjectsListModal(true);
-                    // Load all subjects (including inactive) when opening the modal
-                    try {
-                      setLoading(true);
-                      const response = await examsAPI.getSubjects({ includeInactive: true });
-                      setSubjects(response.subjects || []);
-                    } catch (error) {
-                      console.error('Error loading subjects:', error);
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
+                  onClick={() => navigate('/subjects')}
                   disabled={loading}
                   className="exam-action-btn"
                 >
-                  View Subjects
+                  Manage Subjects
                 </Button>
               )}
               {canCreate && (
                 <>
                   <Button 
                     variant="outline-primary" 
-                    onClick={() => { resetSubjectForm(); setShowSubjectModal(true); }}
+                    onClick={() => navigate('/subjects')}
                     disabled={loading}
                     className="exam-action-btn"
                   >
-                    Add Subject
+                    Subjects
                   </Button>
                   <Button 
                     variant="primary" 
@@ -2518,45 +2532,13 @@ const ExamManagement = () => {
                             >
                               <span className="option-check">{selected ? 'Selected' : ''}</span>
                               <strong>{subject.name}</strong>
-                              <small>{subject.code} - {getSubjectCategoryLabel(subject.category)}</small>
+                              <small>{subject.code}</small>
                             </button>
                           );
                         })
                       )}
                     </div>
                   </Col>
-
-                  {/* Division-based Marking Option */}
-                  <Col md={12}>
-                    <label className={`exam-toggle-card ${examFormData.useDivisions ? 'is-selected' : ''}`} htmlFor="useDivisionsCheckbox">
-                      <Form.Check
-                        type="switch"
-                        id="useDivisionsCheckbox"
-                        name="useDivisions"
-                        checked={examFormData.useDivisions}
-                        onChange={handleExamFormChange}
-                        className="exam-toggle-switch"
-                      />
-                      <span className="exam-toggle-copy">
-                        <strong>Use division-based marking</strong>
-                        <small>Each subject is divided into 10 fixed divisions worth 10 marks each.</small>
-                      </span>
-                    </label>
-                  </Col>
-
-                  {/* Division Configuration Info */}
-                  {examFormData.useDivisions && (
-                    <Col md={12}>
-                      <Alert variant="info" className="mb-3">
-                        <strong>Division-based Marking Enabled</strong>
-                        <br />
-                        <small>
-                          Each subject will have 10 fixed divisions (Division 1 to Division 10), each worth 10 marks.
-                          Total marks per subject: 100 (10 divisions × 10 marks).
-                        </small>
-                      </Alert>
-                    </Col>
-                  )}
 
                   {examFormData.subjects.length > 0 && (
                     <Col md={12}>
@@ -2565,25 +2547,32 @@ const ExamManagement = () => {
                         {examFormData.subjects.map((subj, index) => {
                           const subject = subjects.find(s => s._id === subj.subject);
                           return (
-	                            <ListGroup.Item key={index} className="exam-subject-item">
-                              <div>
+                            <ListGroup.Item key={index} className="exam-subject-item exam-subject-config">
+                              <div className="exam-subject-config-main">
                                 <strong>{subject?.name}</strong> ({subject?.code})
-                                {examFormData.useDivisions && (
-                                  <div className="mt-1">
-                                    <small className="text-muted">
-                                      10 Divisions (Division 1 to Division 10) × 10 marks each
-                                    </small>
-                                  </div>
-                                )}
+                                <div className="exam-subject-number-grid">
+                                  <Form.Group><Form.Label>Full marks</Form.Label><Form.Control type="number" min="1" value={subj.maxMarks} onChange={e => updateSubjectConfig(subj.subject, { maxMarks: Number(e.target.value) })} /></Form.Group>
+                                  <Form.Group><Form.Label>Pass marks</Form.Label><Form.Control type="number" min="0" max={subj.maxMarks} value={subj.passingMarks} onChange={e => updateSubjectConfig(subj.subject, { passingMarks: Number(e.target.value) })} /></Form.Group>
+                                </div>
+                                <label className={`exam-toggle-card compact ${subj.useDivisions ? 'is-selected' : ''}`}>
+                                  <Form.Check type="switch" checked={Boolean(subj.useDivisions)} onChange={e => updateSubjectConfig(subj.subject, {
+                                    useDivisions: e.target.checked,
+                                    maxMarks: e.target.checked ? 100 : subj.maxMarks,
+                                    divisions: e.target.checked ? Array.from({ length: 10 }, (_, i) => ({ name: `Division ${i + 1}`, maxMarks: 10, order: i + 1 })) : []
+                                  })} />
+                                  <span className="exam-toggle-copy"><strong>10-division marking</strong><small>10 divisions, 10 marks each</small></span>
+                                </label>
+                                <details className="subject-access-details">
+                                  <summary>Teacher access ({subj.teacherAccess?.length || 0})</summary>
+                                  <p>Choose Edit marks, View only, or No access for this subject.</p>
+                                  <div className="subject-access-grid">{teachers.map(teacher => {
+                                    const id = getTeacherUserId(teacher);
+                                    const assigned = subj.teacherAccess?.find(link => (link.teacher?._id || link.teacher) === id)?.permission || '';
+                                    return <label key={id}><span>{getTeacherName(teacher)}</span><Form.Select size="sm" value={assigned} onChange={e => setSubjectTeacherPermission(subj.subject, id, e.target.value)}><option value="">No access</option><option value="view">View only</option><option value="edit">Edit marks</option></Form.Select></label>;
+                                  })}</div>
+                                </details>
                               </div>
-	                              <div className="exam-subject-meta">
-                                <small>Max: {subj.maxMarks}</small>
-                                <small>Pass: {subj.passingMarks}</small>
-                                <Badge bg="secondary">Weight: {subj.weightage}</Badge>
-                                {examFormData.useDivisions && (
-                                  <Badge bg="info">Divisions: {subj.divisions?.length || 0}</Badge>
-                                )}
-                              </div>
+                              <Badge bg={subj.useDivisions ? 'info' : 'light'} text={subj.useDivisions ? undefined : 'dark'}>{subj.useDivisions ? '10 divisions' : `${subj.maxMarks} marks`}</Badge>
                             </ListGroup.Item>
                           );
                         })}
@@ -2989,9 +2978,9 @@ const ExamManagement = () => {
                         variant="primary"
                         className="w-100"
                         onClick={handleSaveSubjectMarks}
-                        disabled={savingSubjectMarks || !selectedSubjectForEntry}
+                        disabled={savingSubjectMarks || !selectedSubjectForEntry || !canEditSelectedSubject}
                       >
-                        {savingSubjectMarks ? 'Saving...' : 'Save Subject Marks'}
+                        {savingSubjectMarks ? 'Saving...' : canEditSelectedSubject ? 'Save Subject Marks' : 'View only'}
                       </Button>
                     </Col>
                   </Row>
@@ -3028,6 +3017,7 @@ const ExamManagement = () => {
                                 min="0"
                                 max={selectedSubjectMaxMarks}
                                 value={subjectMarksGrid[student._id]?.marksObtained ?? ''}
+                                disabled={!canEditSelectedSubject}
                                 onChange={(e) => handleSubjectGridChange(student._id, 'marksObtained', e.target.value)}
                                 placeholder={`/${selectedSubjectMaxMarks}`}
                               />
@@ -3037,6 +3027,7 @@ const ExamManagement = () => {
                                 type="switch"
                                 label={subjectMarksGrid[student._id]?.isPresent === false ? 'Absent' : 'Present'}
                                 checked={subjectMarksGrid[student._id]?.isPresent !== false}
+                                disabled={!canEditSelectedSubject}
                                 onChange={(e) => handleSubjectGridChange(student._id, 'isPresent', e.target.checked)}
                                 className="presence-switch"
                               />
@@ -3044,6 +3035,7 @@ const ExamManagement = () => {
                             <td>
                               <Form.Control
                                 value={subjectMarksGrid[student._id]?.remarks || ''}
+                                disabled={!canEditSelectedSubject}
                                 onChange={(e) => handleSubjectGridChange(student._id, 'remarks', e.target.value)}
                                 placeholder="Optional"
                               />

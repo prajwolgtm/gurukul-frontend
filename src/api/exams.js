@@ -15,6 +15,11 @@ export const examsAPI = {
     return response.data;
   },
 
+  updateSubject: async (id, subjectData) => {
+    const response = await api.put(`/exam-management/subjects/${id}`, subjectData);
+    return response.data;
+  },
+
   deleteSubject: async (id) => {
     const response = await api.delete(`/exam-management/subjects/${id}`);
     return response.data;
