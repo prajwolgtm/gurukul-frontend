@@ -6,6 +6,7 @@ export const ROLES = {
   TEACHER: 'Teacher',
   PARENT: 'Parent',
   SECURITY: 'Security',
+  OFFICE_STAFF: 'Office Staff',
   CARETAKER: 'Caretaker',
   STUDENT: 'Student'
 };
@@ -17,6 +18,7 @@ export const ACCESS_LEVELS = {
   [ROLES.HOD]: 7,
   [ROLES.TEACHER]: 5,
   [ROLES.SECURITY]: 4,
+  [ROLES.OFFICE_STAFF]: 3,
   [ROLES.CARETAKER]: 4,
   [ROLES.PARENT]: 2,
   [ROLES.STUDENT]: 1
@@ -29,7 +31,8 @@ export const STUDENT_DATA_VIEWERS = new Set([
   ROLES.ADMIN, 
   ROLES.PRINCIPAL, 
   ROLES.HOD, 
-  ROLES.TEACHER
+  ROLES.TEACHER,
+  ROLES.OFFICE_STAFF
 ]);
 
 export const ATTENDANCE_MANAGERS = new Set([

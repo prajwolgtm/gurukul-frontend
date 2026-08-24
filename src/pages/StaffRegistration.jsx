@@ -66,6 +66,7 @@ const StaffRegistration = () => {
   const roles = [
     { value: ROLES.ADMIN, label: 'Admin' },
     { value: ROLES.COORDINATOR, label: 'Coordinator' },
+    { value: ROLES.OFFICE_STAFF, label: 'Office Staff (Read only)' },
     { value: ROLES.PRINCIPAL, label: 'Principal' },
     { value: ROLES.HOD, label: 'HOD' },
     { value: ROLES.TEACHER, label: 'Teacher' },
@@ -80,7 +81,7 @@ const StaffRegistration = () => {
             <span className="text-3xl">👤</span>
           </div>
           <h1 className="text-2xl font-semibold text-gray-800">Create Staff Account</h1>
-          <p className="text-gray-500 text-sm">Admin-only account creation for teachers, staff, and gate security</p>
+          <p className="text-gray-500 text-sm">Admin-only account creation for coordinators, read-only office staff, teachers, and gate security</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">

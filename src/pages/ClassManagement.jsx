@@ -132,8 +132,8 @@ const ClassManagement = () => {
   });
 
   // Check permissions (matching ExamManagement)
-  const canManage = user?.role !== ROLES.PARENT;
-  const canCreate = user?.role !== ROLES.PARENT;
+  const canManage = ![ROLES.PARENT, ROLES.OFFICE_STAFF].includes(user?.role);
+  const canCreate = ![ROLES.PARENT, ROLES.OFFICE_STAFF].includes(user?.role);
   const canDelete = [ROLES.ADMIN, ROLES.COORDINATOR].includes(user?.role);
 
   useEffect(() => {

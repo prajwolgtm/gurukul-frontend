@@ -108,6 +108,16 @@ const RoleBasedNav = ({ mobile, onItemClick }) => {
     [ROLES.SECURITY]: [
       { to: '/security-scanner', label: 'Gate Scanner' },
     ],
+    [ROLES.OFFICE_STAFF]: [
+      { to: '/', label: 'Dashboard' },
+      { to: '/students', label: 'Students' },
+      { to: '/teachers', label: 'Teachers' },
+      { to: '/classes', label: 'Classes' },
+      { to: '/subjects', label: 'Subjects' },
+      { to: '/exams', label: 'Exams' },
+      { to: '/reports', label: 'Reports' },
+      { to: '/exam-results', label: 'Results' },
+    ],
   };
 
   const items = navItems[user.role] || [{ to: '/', label: 'Dashboard' }];

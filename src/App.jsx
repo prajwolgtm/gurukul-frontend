@@ -55,7 +55,7 @@ function App() {
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout><Outlet /></Layout>}>
                 <Route index element={
-                  <RoleBasedRoute allowedRoles={[ROLES.ADMIN, ROLES.COORDINATOR, ROLES.PRINCIPAL, ROLES.HOD, ROLES.TEACHER, ROLES.CARETAKER]}>
+                  <RoleBasedRoute allowedRoles={[ROLES.ADMIN, ROLES.COORDINATOR, ROLES.PRINCIPAL, ROLES.HOD, ROLES.TEACHER, ROLES.CARETAKER, ROLES.OFFICE_STAFF]}>
                     <Dashboard />
                   </RoleBasedRoute>
                 } />
@@ -80,7 +80,7 @@ function App() {
                 <Route path="my-attendance" element={<SelfAttendance />} />
                 <Route path="parent-dashboard" element={<ParentDashboard />} />
                 <Route path="register-staff" element={
-                  <RoleBasedRoute allowedRoles={[ROLES.ADMIN, ROLES.COORDINATOR, ROLES.PRINCIPAL]}>
+                  <RoleBasedRoute allowedRoles={[ROLES.ADMIN]}>
                     <StaffRegistration />
                   </RoleBasedRoute>
                 } />

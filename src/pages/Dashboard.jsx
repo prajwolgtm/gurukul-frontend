@@ -67,21 +67,30 @@ const getMenuForRole = (role) => {
     { label: 'Reports', href: '/reports', description: 'Reports' }
   ];
 
+  const managementMenu = adminMenu.filter(item => item.href !== '/register-staff');
+
   const caretakerMenu = [
     { label: 'Attendance', href: '/attendance', description: 'Mark daily attendance' },
     { label: 'Students', href: '/students', description: 'View students' },
     { label: 'Reports', href: '/reports', description: 'View reports' }
   ];
 
+  const officeMenu = adminMenu
+    .filter(item => !['/attendance', '/register-staff', '/departments', '/requests'].includes(item.href))
+    .map(item => ({ ...item, description: `View ${item.label.toLowerCase()}` }));
+
   switch (role) {
     case ROLES.ADMIN:
+      return adminMenu;
     case ROLES.PRINCIPAL:
     case ROLES.COORDINATOR:
-      return adminMenu;
+      return managementMenu;
     case ROLES.TEACHER:
       return teacherMenu;
     case ROLES.CARETAKER:
       return caretakerMenu;
+    case ROLES.OFFICE_STAFF:
+      return officeMenu;
     default:
       return adminMenu;
   }
@@ -95,7 +104,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const canTakeAttendance = user?.role && user.role !== ROLES.PARENT;
+  const canTakeAttendance = user?.role && ![ROLES.PARENT, ROLES.OFFICE_STAFF].includes(user.role);
 
   useEffect(() => {
     if (academicYear !== null) {
