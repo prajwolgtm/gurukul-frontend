@@ -146,8 +146,10 @@ const ExamManagement = () => {
 
   // Check permissions
   const canManage = ![ROLES.PARENT, ROLES.OFFICE_STAFF].includes(user?.role);
-  const canCreate = ![ROLES.PARENT, ROLES.OFFICE_STAFF].includes(user?.role);
+  const canCreate = [ROLES.ADMIN, ROLES.COORDINATOR, ROLES.PRINCIPAL, ROLES.HOD].includes(user?.role);
   const canDelete = [ROLES.ADMIN, ROLES.COORDINATOR].includes(user?.role);
+  const canEditExamRecord = (exam) => [ROLES.ADMIN, ROLES.COORDINATOR, ROLES.PRINCIPAL].includes(user?.role) ||
+    (exam?.createdBy?._id || exam?.createdBy)?.toString() === (user?._id || user?.id)?.toString();
 
   const getExamTypeLabel = (type) => ({
     unit: 'Unit / Class Test',
@@ -272,10 +274,7 @@ const ExamManagement = () => {
               weightage: 1,
               useDivisions: false,
               divisions: [],
-              teacherAccess: (subjects.find(subject => subject._id === subjectId)?.teachers || []).map(link => ({
-                teacher: link.teacher?._id || link.teacher,
-                permission: 'edit'
-              }))
+              teacherAccess: []
             }
           ];
 
@@ -1564,18 +1563,9 @@ const ExamManagement = () => {
 
                         {canManage && (
                           <>
-                            <Form.Select
-                              size="sm"
-                              value={exam.status || 'draft'}
-                              onChange={(e) => handleStatusChange(exam._id, e.target.value)}
-                              className="mt-3"
-                            >
-                              <option value="draft">Draft</option>
-                              <option value="scheduled">Scheduled</option>
-                              <option value="ongoing">Ongoing</option>
-                              <option value="completed">Completed</option>
-                              <option value="cancelled">Cancelled</option>
-                            </Form.Select>
+                            {canEditExamRecord(exam) && <Form.Select size="sm" value={exam.status || 'draft'} onChange={(e) => handleStatusChange(exam._id, e.target.value)} className="mt-3">
+                              <option value="draft">Draft</option><option value="scheduled">Scheduled</option><option value="ongoing">Ongoing</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
+                            </Form.Select>}
                             <div className="exam-mobile-actions">
                               <Button
                                 variant="outline-info"
@@ -1584,13 +1574,13 @@ const ExamManagement = () => {
                               >
                                 Results
                               </Button>
-                              <Button
+                              {canEditExamRecord(exam) && <Button
                                 variant="outline-primary"
                                 size="sm"
                                 onClick={() => handleEdit(exam)}
                               >
                                 Edit
-                              </Button>
+                              </Button>}
                               <Button
                                 variant="outline-success"
                                 size="sm"
@@ -1683,7 +1673,7 @@ const ExamManagement = () => {
                             )}
                           </td>
                           <td>
-                            {canManage ? (
+                            {canEditExamRecord(exam) ? (
                               <Form.Select
                                 size="sm"
                                 value={exam.status || 'draft'}
@@ -1720,14 +1710,14 @@ const ExamManagement = () => {
                                 >
 	                                  Results
                                 </Button>
-                                <Button
+                                {canEditExamRecord(exam) && <Button
                                   variant="outline-primary"
                                   size="sm"
                                   onClick={() => handleEdit(exam)}
                                   title="Edit exam"
                                 >
 	                                  Edit
-                                </Button>
+                                </Button>}
                                 <Button
                                   variant="outline-success"
                                   size="sm"
@@ -2566,21 +2556,11 @@ const ExamManagement = () => {
               <Tab eventKey="access" title="Teacher Access">
                 <Row className="g-3">
                   <Col md={12}>
-                    <Card className="exam-option-card">
-                      <Card.Body>
-                        <h6 className="mb-2">Automatic Access</h6>
-                        <p className="text-muted mb-0">
-                          Admin, Principal, Coordinator, Veda/Shakha assigned teachers, and subject teachers should get exam access automatically based on the selected audience and subjects.
-                        </p>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                  <Col md={12}>
                     <div className="exam-field-card">
                       <div className="field-card-header">
                         <div>
-                          <h6>Extra Teachers With Access</h6>
-                          <p>Use this for external examiners, substitute teachers, or anyone who needs direct access beyond normal assignments.</p>
+                          <h6>Whole Exam View Only</h6>
+                          <p>Selected teachers can view this exam and every subject result, but cannot enter or edit marks. Subject marking permission is managed separately inside each selected subject.</p>
                         </div>
                         <Badge bg="primary">{examFormData.accessTeachers.length} selected</Badge>
                       </div>
