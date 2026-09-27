@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container, Row, Col, Card, Button, Form, Table, Modal,
@@ -37,6 +37,7 @@ const StudentManagement = () => {
   const [batches, setBatches] = useState([]);
   const [pagination, setPagination] = useState({});
   const [message, setMessage] = useState({ type: '', text: '' });
+  const studentRequest = useRef(0);
 
   // Form states
   const [showModal, setShowModal] = useState(false);
@@ -83,7 +84,7 @@ const StudentManagement = () => {
 
   // Sorting states
   const [sortConfig, setSortConfig] = useState({
-    key: null,
+    key: 'admissionNo',
     direction: 'asc' // 'asc' or 'desc'
   });
 
@@ -105,23 +106,16 @@ const StudentManagement = () => {
 
   // Load students when filters, showLeftout, or sortConfig changes
   useEffect(() => {
-    loadStudents();
+    const timer = setTimeout(loadStudents, filters.search ? 250 : 0);
+    return () => {
+      clearTimeout(timer);
+      studentRequest.current += 1;
+    };
   }, [filters, showLeftout, sortConfig]);
 
   const loadInitialData = async () => {
     try {
-      setLoading(true);
-      const [studentsRes, departmentsRes] = await Promise.all([
-        studentsAPI.getStudents(filters),
-        academicAPI.getDepartments()
-      ]);
-
-      setStudents(studentsRes.students || []);
-      setPagination({
-        currentPage: studentsRes.pagination?.currentPage || 1,
-        totalPages: studentsRes.pagination?.totalPages || 1,
-        totalStudents: studentsRes.pagination?.totalStudents || 0
-      });
+      const departmentsRes = await academicAPI.getDepartments();
       setDepartments(departmentsRes.departments || []);
     } catch (error) {
       console.error('❌ Error loading initial data:', error);
@@ -129,24 +123,22 @@ const StudentManagement = () => {
         type: 'danger',
         text: 'Error loading data. Please refresh the page.'
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   const loadStudents = async () => {
+    const requestId = ++studentRequest.current;
     try {
       setLoading(true);
       // Build query params with includeLeftout flag and sorting
       const queryParams = {
         ...filters,
         includeLeftout: showLeftout ? 'true' : 'false',
-        sortBy: sortConfig.key || 'fullName',
+        sortBy: sortConfig.key || 'admissionNo',
         sortOrder: sortConfig.direction || 'asc'
       };
       const response = await studentsAPI.getStudents(queryParams);
-      console.log('📊 Students API Response:', response);
-      console.log('📊 Students Count:', response.students?.length || 0);
+      if (requestId !== studentRequest.current) return;
       setStudents(response.students || []);
       setPagination({
         currentPage: response.pagination?.currentPage || 1,
@@ -154,6 +146,7 @@ const StudentManagement = () => {
         totalStudents: response.pagination?.totalStudents || 0
       });
     } catch (error) {
+      if (requestId !== studentRequest.current) return;
       console.error('❌ Error loading students:', error);
       console.error('❌ Error details:', error.response?.data);
       setMessage({
@@ -161,7 +154,7 @@ const StudentManagement = () => {
         text: 'Error loading students: ' + (error.response?.data?.message || error.message)
       });
     } finally {
-      setLoading(false);
+      if (requestId === studentRequest.current) setLoading(false);
     }
   };
 
@@ -622,6 +615,7 @@ const StudentManagement = () => {
                     <Form.Control
                       type="text"
                       placeholder="Search by name, admission no..."
+                      aria-label="Search students"
                       name="search"
                       value={filters.search}
                       onChange={handleFilterChange}
@@ -633,6 +627,7 @@ const StudentManagement = () => {
                     <Form.Label>Department</Form.Label>
                     <Form.Select
                       name="department"
+                      aria-label="Filter by department"
                       value={filters.department}
                       onChange={handleFilterChange}
                     >
@@ -647,14 +642,15 @@ const StudentManagement = () => {
                 </Col>
                 <Col xs={12} sm={6} xl={2}>
                   <Form.Group>
-                    <Form.Label>Sub-Department</Form.Label>
+                    <Form.Label>Branch / Shaakha</Form.Label>
                     <Form.Select
                       name="subDepartment"
+                      aria-label="Filter by branch"
                       value={filters.subDepartment}
                       onChange={handleFilterChange}
                       disabled={!filters.department}
                     >
-                      <option value="">All Sub-Departments</option>
+                      <option value="">All Branches</option>
                       {subDepartments.map(subDept => (
                         <option key={subDept._id} value={subDept._id}>
                           {subDept.name}
@@ -668,6 +664,7 @@ const StudentManagement = () => {
                     <Form.Label>Batch</Form.Label>
                     <Form.Select
                       name="batch"
+                      aria-label="Filter by batch"
                       value={filters.batch}
                       onChange={handleFilterChange}
                       disabled={!filters.department}
@@ -686,6 +683,7 @@ const StudentManagement = () => {
                     <Form.Label>Status</Form.Label>
                     <Form.Select
                       name="status"
+                      aria-label="Filter by status"
                       value={filters.status}
                       onChange={handleFilterChange}
                     >
@@ -699,34 +697,40 @@ const StudentManagement = () => {
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col xs={12} sm={6} xl={2}>
+                <Col xs={12} className="student-filter-actions">
                   <Form.Group>
                     <Form.Check
+                      id="student-include-leftout"
                       type="checkbox"
                       label="Show Leftout"
                       checked={showLeftout}
                       onChange={(e) => {
                         setShowLeftout(e.target.checked);
+                        setFilters(prev => ({ ...prev, page: 1 }));
                         // Reset status filter when toggling leftout
                         if (e.target.checked && filters.status === 'active') {
                           setFilters(prev => ({ ...prev, status: '' }));
                         }
                       }}
-                      className="filter-switch"
+                      className="student-leftout-toggle"
                     />
                   </Form.Group>
-                </Col>
-                <Col xs={12} sm={6} xl={1}>
                   <Form.Group>
                     <Button
                       variant="outline-secondary"
-                      className="filter-action-btn w-100"
+                      size="sm"
                       onClick={loadStudents}
                       disabled={loading}
                     >
                       Refresh
                     </Button>
                   </Form.Group>
+                  <Button variant="link" size="sm" onClick={() => {
+                    setFilters(prev => ({ ...prev, search: '', department: '', subDepartment: '', batch: '', status: 'active', page: 1 }));
+                    setShowLeftout(false);
+                    setSubDepartments([]);
+                    setBatches([]);
+                  }}>Clear filters</Button>
                 </Col>
               </Row>
             </Card.Body>
@@ -737,7 +741,6 @@ const StudentManagement = () => {
             <Card.Header className="student-list-header">
               <div>
                 <h6 className="mb-0">Students List</h6>
-                <small>Swipe or scroll sideways to view all columns</small>
               </div>
               <Badge className="student-count-badge">
                 {pagination.totalStudents || 0} Total Students
@@ -932,9 +935,21 @@ const StudentManagement = () => {
               )}
 
               {/* Pagination */}
+              <div className="student-pagination-footer">
+                <span role="status">
+                  {pagination.totalStudents ? (pagination.currentPage - 1) * filters.limit + 1 : 0}
+                  {' - '}{Math.min((pagination.currentPage || 1) * filters.limit, pagination.totalStudents || 0)}
+                  {' of '}{pagination.totalStudents || 0} students
+                </span>
+                <Form.Group controlId="student-page-size" className="student-page-size">
+                  <Form.Label>Rows per page</Form.Label>
+                  <Form.Select size="sm" value={filters.limit} onChange={e => setFilters(prev => ({ ...prev, limit: Number(e.target.value), page: 1 }))}>
+                    {[10, 20, 50, 100].map(size => <option key={size} value={size}>{size}</option>)}
+                  </Form.Select>
+                </Form.Group>
               {pagination.totalPages > 1 && (
-                <div className="d-flex justify-content-center py-3">
-                  <Pagination>
+                <nav aria-label="Student list pages">
+                  <Pagination size="sm" className="mb-0">
                     <Pagination.First 
                       onClick={() => handlePageChange(1)}
                       disabled={pagination.currentPage === 1}
@@ -978,8 +993,9 @@ const StudentManagement = () => {
                       disabled={pagination.currentPage === pagination.totalPages}
                     />
                   </Pagination>
-                </div>
+                </nav>
               )}
+              </div>
             </Card.Body>
           </Card>
         </Col>
