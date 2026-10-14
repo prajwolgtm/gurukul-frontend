@@ -226,16 +226,17 @@ export const examMarksAPI = {
   },
 
   // Download PDF - Complete exam report (all students, all subjects)
-  downloadCompleteExamReport: async (examId) => {
+  downloadCompleteExamReport: async (examId, layout = 'register') => {
     try {
       const response = await api.get(`/exam-reports/pdf/exam/${examId}`, {
+        params: { layout },
         responseType: 'blob'
       });
       // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `complete_exam_report_${examId}.pdf`);
+      link.setAttribute('download', `${layout === 'cards' ? 'student_result_cards' : 'complete_exam_report'}_${examId}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();

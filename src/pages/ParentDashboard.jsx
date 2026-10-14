@@ -404,10 +404,10 @@ const ParentDashboard = () => {
                               <td className="px-4 py-4 text-sm text-slate-800 font-medium">{exam.examName}</td>
                               <td className="px-4 py-4 text-sm text-slate-600">{exam.examType}</td>
                               <td className="px-4 py-4 text-sm text-slate-600">{exam.examDate ? new Date(exam.examDate).toLocaleDateString() : 'N/A'}</td>
-                              <td className="px-4 py-4 text-sm text-slate-800">{exam.totalMarksObtained}/{exam.totalMaxMarks}</td>
-                              <td className="px-4 py-4 text-sm text-slate-800 font-semibold">{exam.overallPercentage?.toFixed(2) || 0}%</td>
+                              <td className="px-4 py-4 text-sm text-slate-800">{exam.totalMarksObtained ?? '-'}/{exam.totalMaxMarks}</td>
+                              <td className="px-4 py-4 text-sm text-slate-800 font-semibold">{exam.overallPercentage == null ? '-' : `${exam.overallPercentage.toFixed(2)}%`}</td>
                               <td className="px-4 py-4"><span className="px-2 py-1 rounded-full text-xs font-semibold bg-sky-100 text-sky-700">{exam.overallGrade || 'N/A'}</span></td>
-                              <td className="px-4 py-4"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${exam.isPassed ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>{exam.isPassed ? 'Pass' : 'Fail'}</span></td>
+                              <td className="px-4 py-4"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${exam.isPassed ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>{exam.resultStatus || (exam.isPassed ? 'Pass' : 'Fail')}</span></td>
                             </tr>
                           ))}
                         </tbody>

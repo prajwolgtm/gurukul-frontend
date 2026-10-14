@@ -34,6 +34,7 @@ const ExamReport = () => {
   const downloadStudentPdf = async (studentId) => {
     try {
       await examMarksAPI.downloadStudentMarksheet(studentId, {
+        examId: id,
         examType: report?.exam?.examType,
         academicYear: report?.exam?.academicYear
       });
@@ -104,7 +105,7 @@ const ExamReport = () => {
       <Card className="mb-3">
         <Card.Body>
           <h5 className="mb-1">{report.exam.examName} <Badge bg="secondary">{report.exam.status}</Badge></h5>
-          <div className="text-muted small">{report.exam.subject} • {report.exam.examType}</div>
+          <div className="text-muted small">{report.exam.academicYear} • {report.exam.examType}</div>
           <div className="text-muted small mt-2">
             Total: {stats.totalStudents} • Present: {stats.studentsPresent} • Absent: {stats.studentsAbsent} • Pass: {stats.studentsPassed} • Pass%: {stats.passPercentage}%
           </div>
@@ -137,8 +138,8 @@ const ExamReport = () => {
                           {r.marks.subjectMarks.map((sm, i) => (
                             <div key={i}>
                               <strong>{sm.name || sm.subjectName || sm.subject?.name || sm.subject || 'Subject'}</strong>{' '}
-                              {sm.obtainedMarks ?? sm.marksObtained ?? 0}/{sm.maxMarks ?? 0}{' '}
-                              ({Math.round(sm.percentage ?? ((sm.marksObtained ?? 0) / (sm.maxMarks || 1) * 100))}%)
+                              {sm.status === 'Absent' ? 'AB' : sm.marksObtained ?? '-'}/{sm.maxMarks ?? '-'}{' '}
+                              ({sm.status || 'Recorded'})
                             </div>
                           ))}
                         </div>
@@ -147,8 +148,8 @@ const ExamReport = () => {
                       )}
                     </td>
                     <td>{r.attendance}</td>
-                    <td>{r.marks.obtained}/{r.marks.total}</td>
-                    <td>{Math.round(r.marks.percentage)}%</td>
+                    <td>{r.marks.obtained ?? '-'}/{r.marks.total}</td>
+                    <td>{r.marks.percentage == null ? '-' : `${r.marks.percentage.toFixed(2)}%`}</td>
                     <td>{r.result.grade || '-'}</td>
                   <td className="d-flex align-items-center gap-2">
                     <span>{r.result.status}</span>

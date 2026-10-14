@@ -2532,6 +2532,18 @@ const ExamManagement = () => {
                                   <span className="exam-toggle-copy"><strong>10-division marking</strong><small>10 divisions, 10 marks each</small></span>
                                 </label>
                                 <details className="subject-access-details">
+                                  <summary>Result report settings</summary>
+                                  <Form.Check id={`result-total-${subjectId}`} label="Include in result total" checked={subj.includeInResultTotal !== false} onChange={e => updateSubjectConfig(subjectId, { includeInResultTotal: e.target.checked })} />
+                                  <Form.Group controlId={`result-mark-type-${subjectId}`}>
+                                    <Form.Label>Recorded marks represent</Form.Label>
+                                    <Form.Select value={subj.reportMarkType || 'total'} onChange={e => updateSubjectConfig(subjectId, { reportMarkType: e.target.value })}>
+                                      <option value="total">Total only</option>
+                                      <option value="oral">Oral examination</option>
+                                      <option value="written">Written examination</option>
+                                    </Form.Select>
+                                  </Form.Group>
+                                </details>
+                                <details className="subject-access-details">
                                   <summary>Teacher access ({subj.teacherAccess?.length || 0})</summary>
                                   <p>Choose Edit marks, View only, or No access for this subject.</p>
                                   <div className="subject-access-grid">{teachers.map(teacher => {

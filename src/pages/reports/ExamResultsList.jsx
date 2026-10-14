@@ -179,6 +179,7 @@ const ExamResultsList = () => {
     }
     try {
       await examMarksAPI.downloadStudentMarksheet(studentId, {
+        examId: selectedExamId,
         examType: report?.exam?.examType,
         academicYear: report?.exam?.academicYear
       });
@@ -188,13 +189,13 @@ const ExamResultsList = () => {
     }
   };
 
-  const downloadCompleteExamReport = async () => {
+  const downloadCompleteExamReport = async (layout = 'register') => {
     if (!selectedExamId) {
       alert('Please select an exam first.');
       return;
     }
     try {
-      await examMarksAPI.downloadCompleteExamReport(selectedExamId);
+      await examMarksAPI.downloadCompleteExamReport(selectedExamId, layout);
     } catch (e) {
       alert(e?.response?.data?.message || 'Failed to download complete exam report');
     }
@@ -238,10 +239,13 @@ const ExamResultsList = () => {
           <Dropdown>
             <Dropdown.Toggle size="sm" variant="outline-primary">📄 Download PDF</Dropdown.Toggle>
             <Dropdown.Menu>
-              <Dropdown.Item onClick={downloadCompleteExamReport}>
+              <Dropdown.Item onClick={() => downloadCompleteExamReport()}>
                 Complete Exam Report (All Students & Subjects)
               </Dropdown.Item>
               <Dropdown.Divider />
+              <Dropdown.Item onClick={() => downloadCompleteExamReport('cards')}>
+                Student Result Cards (All Students)
+              </Dropdown.Item>
               {subjectOptions.map(s => (
                 <Dropdown.Item key={s.id} onClick={() => downloadSubject(s.id)}>
                   {s.name} Marksheet
@@ -367,8 +371,8 @@ const ExamResultsList = () => {
                                   {r.marks.subjectMarks.map((sm, i) => (
                                     <div key={i}>
                                       <strong>{sm.name || sm.subjectName || sm.subject?.name || sm.subject || 'Subject'}</strong>{' '}
-                                      {sm.obtainedMarks ?? sm.marksObtained ?? 0}/{sm.maxMarks ?? 0}{' '}
-                                      ({Math.round(sm.percentage ?? ((sm.marksObtained ?? 0) / (sm.maxMarks || 1) * 100))}%)
+                                      {sm.status === 'Absent' ? 'AB' : sm.marksObtained ?? '-'}/{sm.maxMarks ?? '-'}{' '}
+                                      ({sm.status || 'Recorded'})
                                     </div>
                                   ))}
                                 </div>
@@ -377,8 +381,8 @@ const ExamResultsList = () => {
                               )}
                             </td>
                             <td>{r.attendance}</td>
-                            <td>{r.marks.obtained}/{r.marks.total}</td>
-                            <td>{Math.round(r.marks.percentage)}%</td>
+                            <td>{r.marks.obtained ?? '-'}/{r.marks.total}</td>
+                            <td>{r.marks.percentage == null ? '-' : `${r.marks.percentage.toFixed(2)}%`}</td>
                             <td>{r.result.grade || '-'}</td>
                             <td>{r.result.status}</td>
                             <td className="print-hide">
